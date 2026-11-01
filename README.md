@@ -17,3 +17,7 @@ Bộ bài bằng tiếng Việt, dùng C#/.NET và ứng dụng quản lý mư�
 | 14–15 | Refactor hệ thống cũ, ADR và đồ án tổng kết |
 
 Mã trong tài liệu phục vụ minh họa, chưa phải ứng dụng hoàn chỉnh đã được biên dịch. Nguồn tham khảo và giới hạn được ghi trong tài liệu.
+
+## Microservices: Up and Running
+
+[Bản tiếng Việt và toàn bộ tài nguyên sách](microservicesupandrunning_vi_1.0/).

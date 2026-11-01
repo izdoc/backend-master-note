@@ -1,0 +1,1329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Phát hành Microservice</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 10. Releasing Microservices"><div class="chapter" id="ch-pipeline-test-release">
+<h1><span class="label">Chương 10. </span>Phát hành Microservice</h1>
+
+
+<p>Chúng ta đang đi đến một phần rất thú vị trong quá trình xây dựng microservice của mình, nơi mọi thứ thực sự được ghép lại với nhau. Cho đến lúc này, chúng ta đã xây dựng một mô hình vận hành, một thiết kế microservice, một nền tảng hạ tầng và hai microservice đang hoạt động. Bây giờ, chúng ta sẽ lấy tất cả những mảnh ghép đó và kết hợp chúng thành một bản triển khai thống nhất.</p>
+
+<p>Trong chương này, chúng ta sẽ đi qua khá nhiều nội dung. Chúng ta sẽ xây dựng một môi trường hạ tầng mới có tên là <em>staging</em>. Tiếp theo, chúng ta sẽ bổ sung cho kho mã nguồn của mình một quy trình phân phối container. Khi container đã sẵn sàng, chúng ta sẽ triển khai một quy trình triển khai bằng công cụ GitOps Argo CD. Khi hoàn tất, chúng ta sẽ có một kiến trúc trông giống như <a data-type="xref" href="#final-arch">Hình 10-1</a>.</p>
+
+<figure><div id="final-arch" class="figure">
+<img src="assets/msur_1001.png" alt="staging deployment"/>
+<h6><span class="label">Hình 10-1. </span>Triển khai staging</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Do phạm vi nội dung cần bao quát, chúng ta sẽ chỉ triển khai microservice thông tin chuyến bay. Tuy nhiên, bạn cũng có thể sử dụng toàn bộ các cơ chế được mô tả ở đây để triển khai cả dịch vụ đặt chỗ.</p>
+</div>
+
+<p>Để làm cho mọi thứ hoạt động, chúng ta sẽ sử dụng ba repository GitHub khác nhau, mỗi repository có pipeline và tài nguyên riêng (như minh họa trong <a data-type="xref" href="#deployment-overview">Hình 10-2</a>). Một trong những lý do chúng ta làm như vậy là vì nó rất phù hợp với mô hình vận hành đã được xác định ở <a data-type="xref" href="ch02.html#ch-designing-ms-op-model">Chương 2</a> và trao cho từng nhóm của chúng ta trách nhiệm cũng như phạm vi làm việc riêng.</p>
+
+<figure><div id="deployment-overview" class="figure">
+<img src="assets/msur_1002.png" alt="Deployment Components"/>
+<h6><span class="label">Hình 10-2. </span>Ba kho mã nguồn cho triển khai</h6>
+</div></figure>
+
+<p>Có rất nhiều điều cần đề cập, vậy hãy bắt đầu với bước đầu tiên: cấp phát môi trường staging trên AWS.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Setting Up the Staging Environment"><div class="sect1" id="idm46223567685304">
+<h1>Thiết lập Môi trường Staging</h1>
+
+<p>Cho đến nay, chúng ta vẫn triển khai <a data-type="indexterm" data-primary="staging environment" data-secondary="setup" id="stageset"/><a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="setup" id="infrastag"/>microservice vào môi trường phát triển cục bộ. Giờ đây, chúng ta sẽ lấy chính những dịch vụ đã được xây dựng và kiểm thử cục bộ đó để triển khai lên hạ tầng đám mây dựa trên AWS. Trong phần này, chúng ta sẽ xây dựng hạ tầng staging theo quy trình được minh họa trong <a data-type="xref" href="#staging-infra-build">Hình 10-3</a>.</p>
+
+<figure><div id="staging-infra-build" class="figure">
+<img src="assets/msur_1003.png" alt="Staging build process"/>
+<h6><span class="label">Hình 10-3. </span>Xây dựng môi trường staging</h6>
+</div></figure>
+
+<p>Chúng ta đã bắt đầu công việc này khi xây dựng môi trường sandbox trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>. Bây giờ, chúng ta cần cập nhật mã hạ tầng đó để phản ánh nhu cầu của các microservice thông tin chuyến bay và đặt chỗ chuyến bay. Chúng ta sẽ bổ sung ba thành phần mới vào mã Terraform để hỗ trợ các microservice của mình:</p>
+
+<ul>
+<li>
+<p>Một bộ điều khiển ingress và bộ định tuyến biên gửi request đến các microservice trong Kubernetes</p>
+</li>
+<li>
+<p>Một instance cơ sở dữ liệu MySQL trên AWS dành cho dữ liệu của microservice flights</p>
+</li>
+<li>
+<p>Một instance cơ sở dữ liệu Redis trên AWS dành cho dữ liệu của microservice reservations</p>
+</li>
+</ul>
+
+<p>Kiểu thay đổi không hề đơn giản này có thể tiềm ẩn rủi ro. Nhưng đây chính là lúc cách tiếp cận hạ tầng bất biến và hạ tầng dưới dạng mã (IaC) của chúng ta thực sự phát huy giá trị! Chúng ta biết chính xác môi trường hiện tại của mình được dựng như thế nào, vì toàn bộ đều nằm trong mã Terraform. Việc cần làm bây giờ chỉ là tạo module cho từng thành phần mới, cập nhật định nghĩa môi trường và chạy quá trình build thông qua pipeline CI/CD.</p>
+
+<p>Trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, chúng ta đã cùng nhau đi qua quy trình viết từng module Terraform. Nhưng vì phần đó đã được trình bày chi tiết, lần này chúng ta sẽ sử dụng các tài sản mã và cấu hình đã được viết sẵn cho bạn. Bạn chỉ cần tùy biến chúng một chút cho phù hợp với nhu cầu của mình.</p>
+
+<p>Hãy bắt đầu bằng một chuyến tham quan ngắn qua các module mới mà chúng ta sẽ dùng để cấp phát những thành phần mới, trước hết là <a data-type="indexterm" data-primary="staging environment" data-secondary="setup" data-startref="stageset" id="idm46223567652120"/><a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="setup" data-startref="infrastag" id="idm46223567650872"/>module cổng ingress.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="The Ingress Module"><div class="sect2" id="idm46223567649128">
+<h2>Module Ingress</h2>
+
+<p>Trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>, chúng ta đã sử dụng <a data-type="indexterm" data-primary="staging environment" data-secondary="setup" data-tertiary="ingress module" id="stageingress"/><a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="ingress module" id="infraingress"/><a data-type="indexterm" data-primary="ingress module, staging environment" id="ingressmod"/>một bộ định tuyến biên tên là Traefik để định tuyến message tới các microservice chạy trong container. Chúng ta sẽ triển khai một kiến trúc tương tự trong hạ tầng dựa trên AWS. Có rất nhiều công cụ có thể dùng để thực hiện định tuyến ingress. Ví dụ, nhiều người thực hành sử dụng <a href="https://oreil.ly/QyHmJ">bộ điều khiển ingress Nginx</a>. Traefik cũng là một lựa chọn tốt: vì chúng ta đã bắt đầu dùng nó trong giai đoạn phát triển, nên chúng ta quyết định triển khai nó làm bộ điều khiển trong môi trường AWS luôn.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223567641352">
+<h5>Quyết định then chốt: Triển khai Bộ điều khiển Ingress Traefik</h5>
+<p>Chúng ta sẽ dùng Traefik để định tuyến message từ load balancer tới các microservice được triển khai trong Kubernetes.</p>
+</div></aside>
+
+<p>Để tiết kiệm thời gian, chúng tôi đã viết sẵn một module Terraform sẽ cài đặt bộ điều khiển ingress Traefik vào môi trường. Chúng ta sẽ có thể dùng module này trong mã môi trường Terraform của mình theo cách tương tự như các module network, EKS và Argo CD đã dùng ở <a data-type="xref" href="ch06.html#ch-infrastructure-pipeline">Chương 6</a>. Mã cho module Traefik có tại <a href="https://oreil.ly/8YXIW">trang GitHub này</a>.</p>
+
+<p>Chúng ta sẽ không có thời gian để triển khai một API “backend for frontend” (BFF) như một phần của bản build ví dụ. Tuy nhiên, cấu hình ingress mà chúng ta đang thiết lập rất phù hợp để được mở rộng cho mục đích đó trong tương lai. Ví dụ, bạn có thể cấp phát một <a href="https://oreil.ly/KATjx">AWS API Gateway</a> đặt phía trước bộ điều khiển ingress để kết hợp nhiều service thành một API duy nhất. Thực tế, chúng ta đã triển khai Traefik bằng AWS Network Load Balancer, điều này giúp loại kết nối đó dễ hiện thực hơn.</p>
+
+<p>Chúng ta sẽ có dịp dùng module ingress này ở mục <a data-type="xref" href="#fork-staging-infrastructure">“Fork Dự án Hạ tầng Staging”</a> khi xây dựng môi trường staging. Còn bây giờ, hãy xem chúng ta sẽ hỗ trợ nhu cầu <a data-type="indexterm" data-primary="staging environment" data-secondary="setup" data-tertiary="ingress module" data-startref="stageingress" id="idm46223567634584"/><a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="ingress module" data-startref="infraingress" id="idm46223567633096"/><a data-type="indexterm" data-primary="ingress module, staging environment" data-startref="ingressmod" id="idm46223567631608"/>cơ sở dữ liệu của mình như thế nào.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="The Database Module"><div class="sect2" id="idm46223567630392">
+<h2>Module Cơ sở dữ liệu</h2>
+
+<p>Mỗi microservice của chúng ta <a data-type="indexterm" data-primary="staging environment" data-secondary="setup" data-tertiary="database module" id="idm46223567628888"/><a data-type="indexterm" data-primary="database module, staging environment" id="idm46223567627640"/>sử dụng cơ sở dữ liệu khác nhau, vì vậy chúng ta sẽ cần cấp phát hai loại cơ sở dữ liệu khác nhau trong môi trường hạ tầng. Chúng ta sẽ cần cả MySQL lẫn Redis để đáp ứng nhu cầu của các nhóm microservice. Trong bản build này, chúng ta đã quyết định sử dụng các phiên bản được AWS quản lý của những sản phẩm cơ sở dữ liệu này. Bằng cách đó, nhóm platform của chúng ta có thể cung cấp hai loại cơ sở dữ liệu theo mô hình <em>x</em>-as-a-service cho các nhóm microservice cần dùng chúng.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223567625944">
+<h5>Quyết định then chốt: Sử dụng Dịch vụ Cơ sở dữ liệu Dùng chung và Được quản lý</h5>
+<p>Nhóm platform sẽ tạo các module dựa trên Terraform để cấp phát các dịch vụ cơ sở dữ liệu được AWS lưu trữ và quản lý cho từng môi trường.</p>
+</div></aside>
+
+<p>Trong module cơ sở dữ liệu, chúng ta sẽ dùng dịch vụ AWS ElastiCache để cấp phát một kho dữ liệu Redis và AWS Relational Database (RDS) <a data-type="indexterm" data-primary="MySQL" data-secondary="RDS (Relational Database) and" id="idm46223567623752"/>để cấp phát một instance MySQL. Chúng tôi đã viết sẵn một module thực hiện việc này, bạn có thể tìm thấy nó trong <a href="https://oreil.ly/Microservices_UpandRunning_mod_awsdb">repository GitHub của cuốn sách</a>. Module này cấp phát cả hai loại cơ sở dữ liệu, cũng như cấu hình mạng và các chính sách truy cập mà dịch vụ cơ sở dữ liệu cần để vận hành.</p>
+
+<p>Khi module được áp dụng cho môi trường staging, chúng ta sẽ có cả Redis và một instance cơ sở dữ liệu MySQL <a data-type="indexterm" data-primary="MySQL" data-secondary="staging environment" id="idm46223567621112"/>đang chạy và sẵn sàng sử dụng. Việc còn lại lúc này chỉ là dùng các module đó trong một tệp mã Terraform và cấp phát một môi trường. Đó là nội dung chúng ta sẽ đề cập ở phần tiếp theo.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Forking the Staging Infrastructure Project"><div class="sect2" id="fork-staging-infrastructure">
+<h2>Fork Dự án Hạ tầng Staging</h2>
+
+<p>Môi trường staging mà chúng ta cần <a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="forking" id="idm46223567617880"/><a data-type="indexterm" data-primary="staging environment" data-secondary="forking" id="idm46223567616632"/><a data-type="indexterm" data-primary="forking staging infrastructure" id="idm46223567615688"/>để phát hành các microservice của mình sẽ rất giống với môi trường sandbox mà chúng ta đã tạo trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>. Chúng ta sẽ tiếp tục dùng cùng các phương pháp và nguyên tắc đã áp dụng trước đó. Chúng ta sẽ dùng Terraform để định nghĩa môi trường bằng mã, và sẽ sử dụng các module mà chúng ta đã viết cho network, cụm Kubernetes và Argo CD. Chúng ta sẽ bổ sung cho các module đó bằng các module cơ sở dữ liệu mới và bộ điều khiển ingress mà vừa mô tả. Cuối cùng, chúng ta sẽ dùng một pipeline GitHub Actions để cấp phát môi trường, đúng như cách đã làm với môi trường sandbox.</p>
+
+<p>Chúng ta đã giải thích cách <a data-type="indexterm" data-primary="repositories" data-secondary="staging environment" id="idm46223567613048"/><a data-type="indexterm" data-primary="staging environment" data-secondary="repositories" id="idm46223567612040"/>tạo một pipeline GitHub Actions trong <a data-type="xref" href="ch06.html#ch-infrastructure-pipeline">Chương 6</a>, và đã đi qua quy trình viết cũng như sử dụng mã Terraform trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>. Vì vậy không cần làm lại tất cả những điều đó. Thay vào đó, chúng ta sẽ sử dụng một dự án khung cho môi trường staging mà chúng tôi đã tạo sẵn cho bạn (xem <a data-type="xref" href="#staging-repo">Hình 10-4</a>). Chúng ta sẽ cần thực hiện một vài thay đổi nhỏ trong mã để nó hoạt động trong môi trường AWS của bạn. Để làm được điều đó, chúng ta sẽ fork repository để bạn có bản sao riêng và có thể thay đổi tùy ý.</p>
+
+<figure><div id="staging-repo" class="figure">
+<img src="assets/msur_1004.png" alt="msur 1004"/>
+<h6><span class="label">Hình 10-4. </span>Bắt đầu với repository môi trường staging</h6>
+</div></figure>
+
+<p>Trong GitHub, một <em>fork</em> cho phép <a data-type="indexterm" data-primary="GitHub" data-secondary="forking repository" id="idm46223567605208"/>bạn tạo một bản sao của dự án mã nguồn của người khác trong tài khoản của mình. Để fork repository môi trường staging, hãy làm theo các bước sau:</p>
+<ol>
+<li>
+<p>Mở trình duyệt và đăng nhập vào tài khoản GitHub của bạn.</p>
+</li>
+<li>
+<p>Đi tới <a href="https://oreil.ly/Microservices_UpandRunning_infrastaging_env">repository GitHub của cuốn sách</a>.</p>
+</li>
+<li>
+<p>Nhấp nút Fork ở góc trên bên phải của màn hình.</p>
+</li>
+
+</ol>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Bạn có thể muốn nhân bản repository này thay vì fork nó. Cách này sẽ cho phép bạn đổi chế độ truy cập của repository sang private thay vì public. Hướng dẫn về cách nhân bản repository GitHub có trong <a href="https://oreil.ly/HbZMN">tài liệu GitHub về chủ đề này</a>.</p>
+</div>
+
+<p>Khi thao tác hoàn tất, bạn sẽ có bản sao fork của riêng mình cho <code>infra-staging-env</code>. Tuy nhiên, nó vẫn chưa được cấu hình để sử dụng tài khoản hoặc tài nguyên AWS của bạn. Điều đầu tiên chúng ta cần cập nhật là workflow GitHub Actions.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Configuring the Staging Workflow"><div class="sect2" id="idm46223567596744">
+<h2>Cấu hình Workflow Staging</h2>
+
+<p>Workflow CI/CD đã fork mà chúng ta <a data-type="indexterm" data-primary="staging environment" data-secondary="workflow" data-tertiary="configuring" id="stagworkconfig"/><a data-type="indexterm" data-primary="workflow" data-secondary="staging environment" data-tertiary="configuring" id="workstagconfig"/><a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="workflow configuration" id="infrastagwork"/>vừa tạo sẽ không thể truy cập tài khoản AWS của bạn nếu không có thông tin xác thực. Vì vậy, chúng ta cần thêm thông tin xác thực quản lý truy cập AWS và một mật khẩu MySQL <a data-type="indexterm" data-primary="MySQL" data-secondary="workflow staging" id="idm46223567590280"/>vào phần secrets của repository. Bạn nên đã có thông tin xác thực cho tài khoản operator AWS từ phần thiết lập pipeline mà chúng ta đã thực hiện trong <a data-type="xref" href="ch06.html#ch-infrastructure-pipeline">Chương 6</a>. Nếu bạn không còn giữ các khóa đó nữa, bạn có thể mở bảng điều khiển quản lý AWS trên trình duyệt và tạo một bộ thông tin xác thực mới cho người dùng operations của mình.</p>
+
+<p>Khi đã có <a data-type="indexterm" data-primary="secrets" data-secondary="repositories" id="idm46223567587640"/>thông tin xác thực trong tay, hãy đi tới phần Settings của repository GitHub đã fork và chọn Secrets ở menu điều hướng bên trái. Thêm các secret trong <a data-type="xref" href="#infra-secrets">Bảng 10-1</a> bằng cách nhấp nút New secret.</p>
+<table id="infra-secrets">
+<caption><span class="label">Bảng 10-1. </span>Các secret cho hạ tầng</caption>
+<thead>
+<tr>
+<th>Khóa</th>
+<th>Giá trị</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>AWS_ACCESS_KEY_ID</code></p></td>
+<td><p>Access key ID cho người dùng AWS <code>operator</code> của bạn</p></td>
+</tr>
+<tr>
+<td><p><code>AWS_SECRET_ACCESS_KEY</code></p></td>
+<td><p>Secret key cho người dùng <code>operator</code> của bạn</p></td>
+</tr>
+<tr>
+<td><p><code>MYSQL_PASSWORD</code></p></td>
+<td><p>microservices</p></td>
+</tr>
+</tbody>
+</table>
+
+<p>Hãy chắc chắn bạn nhập chính xác các tên khóa này như mô tả trong <a data-type="xref" href="#infra-secrets">Bảng 10-1</a>. Nếu không, pipeline sẽ không thể truy cập instance AWS của bạn và tạo tài nguyên. Hãy dùng giá trị <code>microservices</code> cho secret <code>MYSQL_PASSWORD</code>. Mật khẩu này sẽ được dùng khi chúng ta cấp phát cơ sở dữ liệu AWS RDS.</p>
+
+<p>Khi chúng ta fork repository infra-staging-env, GitHub đã tạo một bản sao của workflow Actions định nghĩa pipeline CI/CD. Nhưng vì lý do bảo mật, GitHub không <a data-type="indexterm" data-primary="security" data-secondary="GitHub Actions" id="idm46223567573032"/>tự động bật tính năng GitHub Actions khi bạn fork một repository (xem <a data-type="xref" href="#enable-github-actions">Hình 10-5</a>). Vì vậy, bạn sẽ cần khởi chạy nó bằng cách làm như sau:</p>
+
+<ul>
+<li>
+<p>Nhấp tab Actions trong bảng điều khiển quản lý của repository đã fork.</p>
+</li>
+<li>
+<p>Nếu được yêu cầu, hãy bảo GitHub bật workflow mà chúng ta đã fork.</p>
+</li>
+</ul>
+
+<figure><div id="enable-github-actions" class="figure">
+<img src="assets/msur_1005.png" alt="Challenge to enable GitHub Actions for a forked respository"/>
+<h6><span class="label">Hình 10-5. </span>Bật GitHub Actions</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>GitHub thay đổi trải nghiệm người dùng khá thường xuyên, vì vậy các bước và màn hình cụ thể mà bạn gặp có thể sẽ khác.</p>
+</div>
+
+<p>Pipeline hạ tầng đã fork của chúng ta hiện đã được kích hoạt và sẵn sàng chạy. Giờ chúng ta chỉ cần thực hiện thêm một vài điều chỉnh cho mã Terraform tạo ra môi trường staging.</p>
+<div data-type="warning" epub:type="warning"><h6>Cảnh báo</h6>
+<p>Workflow staging mà chúng tôi đã xây dựng <a data-type="indexterm" data-primary="staging environment" data-secondary="workflow" data-tertiary="kubeconfig file" id="idm46223567564008"/><a data-type="indexterm" data-primary="workflow" data-secondary="staging environment" data-tertiary="kubeconfig file" id="idm46223567562760"/><a data-type="indexterm" data-primary="kubeconfig file" data-secondary="workflow staging" id="idm46223567561544"/>cho bạn sẽ tự động tạo một tệp <em>kubeconfig</em> như một phần của quá trình cấp phát. Tệp này chứa thông tin kết nối để bạn có thể kết nối tới cụm Kubernetes mà chúng ta sẽ tạo trên EKS. Vì repository mã này là public, tệp đó sẽ khả dụng với bất kỳ ai ghé thăm repository của bạn. Về lý thuyết, điều này không nên là vấn đề. Cụm EKS của chúng ta yêu cầu thông tin xác thực AWS để xác thực và kết nối. Điều đó có nghĩa là kể cả khi có tệp <em>kubeconfig</em>, kẻ tấn công vẫn không thể kết nối tới cụm của bạn trừ khi họ cũng có thông tin xác thực AWS của bạn.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Editing the Staging Infrastructure Code"><div class="sect2" id="idm46223567596152">
+<h2>Chỉnh sửa Mã Hạ tầng Staging</h2>
+
+<p>Mã Terraform mà chúng tôi <a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="code editing" id="infrastagcode"/><a data-type="indexterm" data-primary="staging environment" data-secondary="code editing" id="stagcodeedit"/>đã viết cho bạn sẽ cấp phát một môi trường staging. Nhưng nó sẽ không hoạt động đúng cho đến khi chúng ta đặt một số giá trị biến cục bộ dành riêng cho tài khoản AWS và môi trường của bạn. Để làm điều đó, chúng ta sẽ làm việc với các tệp trong môi trường cục bộ của bạn. Ngoài ra, bạn cũng cần tạo một bản clone của repository infra-staging-env đã fork. Phần đó chúng tôi để bạn tự thực hiện.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nếu bạn chưa chắc cách clone repository của mình, hãy làm theo hướng dẫn dành cho hệ điều hành của bạn trong <a href="https://oreil.ly/hvEWn">tài liệu GitHub</a>.</p>
+</div>
+
+<p>Chúng ta sẽ chỉnh sửa tệp <em>main.tf</em> định nghĩa <a data-type="indexterm" data-primary="staging environment" data-secondary="main.tf file" id="idm46223567550840"/>môi trường staging. Bạn sẽ cần thay đổi giá trị của một vài biến cục bộ mà chúng tôi đã định nghĩa trong <a data-type="xref" href="#staging-values">Bảng 10-2</a>.</p>
+<table id="staging-values">
+<caption><span class="label">Bảng 10-2. </span>Các giá trị môi trường staging trong main.tf</caption>
+<thead>
+<tr>
+<th>Tài nguyên</th>
+<th>Tên thuộc tính</th>
+<th>Mô tả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>terraform</code></p></td>
+<td><p><code>bucket</code></p></td>
+<td><p>Tên bucket S3 cho Terraform backend của bạn</p></td>
+</tr>
+<tr>
+<td><p><code>terraform</code></p></td>
+<td><p><code>key</code></p></td>
+<td><p>Định danh dùng cho dữ liệu backend của bạn trong S3</p></td>
+</tr>
+<tr>
+<td><p><code>terraform</code></p></td>
+<td><p><code>region</code></p></td>
+<td><p>Region AWS của bạn</p></td>
+</tr>
+<tr>
+<td><p><code>locals</code></p></td>
+<td><p><code>aws_region</code></p></td>
+<td><p>Region AWS của bạn</p></td>
+</tr>
+</tbody>
+</table>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Các giá trị này sẽ giống hệt với cấu hình mà chúng ta đã tạo ở <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, vì vậy nếu bạn còn giữ đoạn mã đó, bạn có thể copy và paste từ đó.</p>
+</div>
+
+<p>Để thực hiện các thay đổi này, hãy mở <em>main.tf</em> bằng trình soạn thảo văn bản bạn ưa thích và cập nhật nó bằng các giá trị phù hợp. Tất cả các giá trị bạn cần thay thế đều nằm trong các phần <code>terraform</code> và <code>locals</code> ở đầu tệp. Bạn cũng có thể tận dụng bước này để xem lại tệp 
+<span class="keep-together">Terraform</span> và hiểu rõ hơn nó làm gì. Khi hoàn tất, phần đầu của tệp sẽ trông tương tự như <a data-type="xref" href="#staging-params-example">Ví dụ 10-1</a>.</p>
+<div id="staging-params-example" data-type="example">
+<h5><span class="label">Ví dụ 10-1. </span>main.tf đã cập nhật cho môi trường staging</h5>
+<pre data-type="programlisting">
+terraform {
+backend "s3" {
+  bucket = "<strong>rm-terraform-backend</strong>"
+  key = "<strong>terraform-env</strong>"
+  region = "<strong>eu-west-2</strong>"
+  }
+}
+
+locals {
+  env_name = "staging"
+  aws_region = "<strong>eu-west-2</strong>"
+  k8s_cluster_name = "ms-cluster"
+}
+</pre></div>
+
+<p>Mã Terraform staging của chúng ta hiện đã sẵn sàng để áp dụng. Nhưng nó sẽ không hoạt động nếu chúng ta thử sử dụng ngay. Đó là vì tài khoản operator AWS của chúng ta chưa có đủ quyền. Chúng ta đã thêm một số module cơ sở dữ liệu mới, nhưng tài khoản operator mà chúng ta đang dùng không được phép tạo hoặc làm việc với các tài nguyên AWS đó. Nếu chạy Terraform lúc này, chúng ta sẽ nhận được lỗi truy cập từ AWS.</p>
+
+<p>Để giải quyết vấn đề đó, chúng ta cần cấp thêm một vài quyền cho người dùng operator AWS. Chúng ta sẽ làm điều này bằng cách tạo một IAM group mới cho công việc cơ sở dữ liệu. Khi group được thiết lập xong, chúng ta sẽ thêm tài khoản operator vào group để nó kế thừa các quyền đó.</p>
+
+<p>Chạy lệnh AWS CLI sau để tạo một group mới tên là <code>DB-Ops</code>:</p>
+
+<pre data-type="programlisting">$ aws iam create-group --group-name DB-Ops</pre>
+
+<p>Tiếp theo, chúng ta có thể chạy lệnh sau để gắn các policy truy cập cho RDS và ElastiCache vào group:</p>
+
+<pre data-type="programlisting">$ aws iam attach-group-policy --group-name DB-Ops\
+ --policy-arn arn:aws:iam::aws:policy/AmazonRDSFullAccess &amp;&amp;\
+aws iam attach-group-policy --group-name DB-Ops\
+ --policy-arn arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess</pre>
+
+<p>Cuối cùng, dùng lệnh CLI sau để thêm tài khoản Ops của chúng ta vào group vừa tạo:</p>
+
+<pre data-type="programlisting">$ aws iam add-user-to-group --user-name ops-account --group-name DB-Ops</pre>
+
+<p>Khi các quyền đó đã được thiết lập, chúng ta gần như đã sẵn sàng. Nhưng trước khi commit, hãy làm một bài kiểm tra nhanh để bảo đảm mã hạ tầng đã cập nhật hoạt động đúng. Chạy các lệnh Terraform sau để định dạng và kiểm tra tính hợp lệ của mã đã cập nhật:</p>
+
+<pre data-type="programlisting">infra-staging-env$ terraform fmt
+[...]
+infra-staging-env$ terraform init
+[...]
+infra-staging-env$ terraform validate
+[...]
+infra-staging-env$ terraform plan
+[...]</pre>
+
+<p>Bây giờ chúng ta đã sẵn sàng commit mã hạ tầng và kích hoạt pipeline CI/CD. Hãy bắt đầu bằng cách commit mã Terraform đã cập nhật vào repository đã fork của bạn:</p>
+
+<pre data-type="programlisting">$ git add .
+$ git commit -m "Staging environment with databases"
+$ git push origin</pre>
+
+<p>Nếu bạn còn nhớ trong <a data-type="xref" href="ch06.html#ch-infrastructure-pipeline">Chương 6</a>, workflow của chúng ta sẽ được kích hoạt khi đẩy một thẻ phát hành bắt đầu bằng <code>v</code>. Hãy dùng các lệnh Git sau để tạo một thẻ <code>v1.0</code> mới và đẩy nó lên repository đã fork của bạn:</p>
+
+<pre data-type="programlisting">$ git tag -a v1.0 -m "Initial staging environment build"
+$ git push origin v1.0</pre>
+
+<p>Với thao tác đó, quy trình cấp phát staging của bạn sẽ được khởi động. Bạn có thể kiểm tra trạng thái của lần chạy pipeline trong giao diện GitHub trên trình duyệt. Nếu job pipeline đã thành công, giờ bạn đã có một môi trường staging với một cụm Kubernetes cùng các cơ sở dữ liệu MySQL và Redis đang chạy và sẵn sàng sử dụng. Chúng ta sẽ cần cụm Kubernetes đó cho việc triển khai microservice. Vì vậy, bước tiếp theo sẽ là xác nhận rằng nó <a data-type="indexterm" data-primary="infrastructure" data-secondary="staging" data-tertiary="code editing" data-startref="infrastagcode" id="idm46223567512792"/><a data-type="indexterm" data-primary="staging environment" data-secondary="code editing" data-startref="stagcodeedit" id="idm46223567511272"/>đang hoạt động.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Testing access to the Kubernetes cluster"><div class="sect3" id="idm46223567509800">
+<h3>Kiểm tra khả năng truy cập tới cụm Kubernetes</h3>
+
+<p>Để giao tiếp <a data-type="indexterm" data-primary="staging environment" data-secondary="Kubernetes cluster, testing access" id="stagkubtest"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="cluster" data-tertiary="access testing" id="kubeclustaccess"/>với cụm Kubernetes staging, chúng ta sẽ cần thông tin cấu hình <a data-type="indexterm" data-primary="kubectl" data-secondary="configuration details" id="idm46223567505336"/>cho ứng dụng <code>kubectl</code>. Để lấy được thông tin đó, chúng ta sẽ dùng đúng quy trình đã sử dụng ở <a data-type="xref" href="ch07.html#sandbox-testing-environment">“Kiểm thử Môi trường”</a>, tức là tải xuống một tệp cấu hình và cập nhật thiết lập môi trường cục bộ.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Hãy bảo đảm pipeline CI/CD đã hoàn tất thành công trước khi thử kết nối tới cụm Kubernetes.</p>
+</div>
+
+<p>Thiết lập môi trường client Kubernetes của bạn bằng cách tải xuống tệp <em>kubeconfig</em> do pipeline staging của GitHub Actions tạo ra. Sau đó đặt biến môi trường <code>KUBECONFIG</code> trỏ tới cấu hình mà bạn vừa tải xuống:</p>
+
+<pre data-type="programlisting">$ export KUBECONFIG=~/Downloads/kubeconfig</pre>
+
+<p>Khi môi trường đã được thiết lập, hãy chạy <code>kubectl get svc --all-namespaces</code> để xác nhận cụm staging đang hoạt động và các đối tượng Kubernetes đã được triển khai. Bạn sẽ thấy kết quả tương tự như <a data-type="xref" href="#get-svc-example">Ví dụ 10-2</a>.</p>
+<div id="get-svc-example" data-type="example">
+<h5><span class="label">Ví dụ 10-2. </span>Kết quả get svc</h5>
+
+<pre data-type="programlisting">$ kubectl get svc --all-namespaces
+NAMESPACE   NAME                               TYPE         CLUSTER-IP
+argocd      msur-argocd-application-controller ClusterIP    172.20.133.240
+argocd      msur-argocd-dex-server             ClusterIP    172.20.74.68
+default     ms-ingress-nginx-ingress           LoadBalancer 172.20.239.114
+[... lots more services ...]</pre></div>
+
+<p>Trong kết quả, bạn sẽ thấy danh sách tất cả các Kubernetes service mà chúng ta đã triển khai. Danh sách đó phải bao gồm các service cho ứng dụng Argo CD và service ingress Nginx. Điều đó có nghĩa là cụm của chúng ta đang chạy và các service cần thiết đã được cấp phát thành công.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Create a Kubernetes secret"><div class="sect3" id="create-kubernetes-secret">
+<h3>Tạo một Kubernetes secret</h3>
+
+<p>Bước cuối cùng chúng ta cần thực hiện là thiết lập một <em>secret</em> của Kubernetes. Khi microservice thông tin <a data-type="indexterm" data-primary="flights microservice" data-secondary="MySQL and" id="idm46223567490728"/>chuyến bay kết nối tới MySQL, nó sẽ cần một mật khẩu. Để tránh lưu mật khẩu đó dưới dạng văn bản thuần, chúng ta sẽ lưu nó trong một đối tượng Kubernetes đặc biệt giúp ẩn nó khỏi những người xem không được phép.</p>
+
+<p>Chạy lệnh sau để tạo và điền dữ liệu cho <a data-type="indexterm" data-primary="MySQL" data-secondary="Kubernetes secrets" id="idm46223567488952"/><a data-type="indexterm" data-primary="secrets" data-secondary="Kubernetes" data-tertiary="MySQL" id="idm46223567487976"/>secret Kubernetes chứa mật khẩu MySQL:</p>
+
+<pre data-type="programlisting">$ kubectl create secret generic \
+mysql --from-literal=password=microservices -n microservices</pre>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Các chức năng secret dựng sẵn của <a data-type="indexterm" data-primary="secrets" data-secondary="Kubernetes" data-tertiary="built-in functions" id="idm46223567484744"/>Kubernetes khá hữu ích, nhưng chúng tôi khuyến nghị bạn dùng một giải pháp giàu tính năng hơn cho triển khai thực tế. Có rất nhiều lựa chọn trong lĩnh vực này, bao gồm cả <a href="https://oreil.ly/YeiHQ">HashiCorp Vault</a>.</p>
+</div>
+
+<p>Giờ đây, chúng ta đã có một môi trường staging với hạ tầng phù hợp với nhu cầu của các microservice đã phát triển. Bước tiếp theo sẽ là xuất bản các microservice đó dưới dạng container <a data-type="indexterm" data-primary="staging environment" data-secondary="Kubernetes cluster, testing access" data-startref="stagkubtest" id="idm46223567481640"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="cluster" data-tertiary="access testing" data-startref="kubeclustaccess" id="idm46223567480328"/>để có thể triển khai chúng vào môi trường.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" class="less_space pagebreak-before" data-pdf-bookmark="Shipping the Flight Information Container"><div class="sect1" id="idm46223567684680">
+<h1>Phát hành Container Thông tin Chuyến bay</h1>
+
+<p>Trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>, chúng ta <a data-type="indexterm" data-primary="containers" data-secondary="shipping" id="idm46223567476424"/><a data-type="indexterm" data-primary="shipping container" id="idm46223567475448"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="container, shipping" id="idm46223567474776"/>đã dùng <code>make</code> để kiểm thử, build và chạy microservice cục bộ trong môi trường phát triển. Nhưng để build và triển khai các service của mình vào testing, staging và xa hơn nữa, chúng ta sẽ muốn có một quy trình tự động và lặp lại được hơn.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Chúng tôi đã xây dựng sẵn một <a href="https://oreil.ly/7LHnY">phiên bản container hóa của microservice flights</a> để bạn sử dụng. Vì vậy, nếu bạn không quan tâm đến việc tự xây dựng workflow triển khai Docker Hub, bạn có thể bỏ qua đến phần <a data-type="xref" href="#deploying-flight-container">“Triển khai Container Dịch vụ Flights”</a>.</p>
+</div>
+
+<p>Việc dùng tự động hóa và các kỹ thuật DevOps để build service sẽ cải thiện tính dự đoán được, chất lượng và tốc độ triển khai microservice của chúng ta. Đây cũng chính là nguyên lý mà chúng ta đã áp dụng cho phần build hạ tầng. Trong phần này, chúng ta sẽ xây dựng một pipeline CI/CD để build và xuất bản microservice flights lên một container registry, như trong <a data-type="xref" href="#microservices-cicd">Hình 10-6</a>.</p>
+
+<figure><div id="microservices-cicd" class="figure">
+<img src="assets/msur_1006.png" alt="The microservices CD/CD process"/>
+<h6><span class="label">Hình 10-6. </span>Quy trình CI/CD cho microservice</h6>
+</div></figure>
+
+<p>Hãy bắt đầu bằng cách tìm hiểu Docker Hub, container registry mà chúng ta sẽ dùng để lưu trữ container microservice.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Introducing Docker Hub"><div class="sect2" id="idm46223567465832">
+<h2>Giới thiệu Docker Hub</h2>
+
+<p>Trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>, quy trình build dựa trên <code>make</code> của chúng ta đã dùng cả <code>docker-compose</code> lẫn <code>docker</code> để <a data-type="indexterm" data-primary="Docker Hub" id="idm46223567461944"/><a data-type="indexterm" data-primary="containers" data-secondary="shipping" data-tertiary="Docker Hub" id="idm46223567461208"/><a data-type="indexterm" data-primary="shipping container" data-secondary="Docker Hub" id="idm46223567459992"/>tạo ra container phục vụ kiểm thử và phát hành. Để đưa các container đó vào môi trường staging, chúng ta cần một cách để di chuyển chúng, hay nói cách khác là <em>vận chuyển</em> chúng sang đó. Container khá giống với ứng dụng nhị phân, vì vậy chúng ta hoàn toàn có thể chỉ cần tải chúng lên filesystem của môi trường đích. Nhưng điều này sẽ trở nên lộn xộn khi số lượng container cần quản lý tăng lên.</p>
+
+<p>Thay vào đó, chúng ta sẽ đưa các <a data-type="indexterm" data-primary="Docker Hub" data-secondary="container registry" id="idm46223567457896"/><a data-type="indexterm" data-primary="container registry" id="idm46223567456888"/><a data-type="indexterm" data-primary="registries" data-secondary="container registry" id="idm46223567456216"/>container của mình vào một <em>container registry</em>. Registry là một hệ thống phần mềm lưu trữ container. Một registry tốt giúp container an toàn, đồng thời khiến chúng dễ được khám phá, cập nhật và thay đổi. Docker thậm chí còn định nghĩa một <a href="https://oreil.ly/sLI3B">API</a> cho các thao tác với registry và Docker engine có hỗ trợ dựng sẵn cho API đó.</p>
+
+<p>Có rất nhiều lựa chọn lưu trữ registry <a data-type="indexterm" data-primary="registries" data-secondary="hosting" id="idm46223567453432"/>hỗ trợ Docker registry API. Tất cả các nhà cung cấp đám mây lớn đều có thể lưu trữ cho bạn một registry riêng tư, an toàn. Bạn cũng có thể tự vận hành máy chủ registry bằng triển khai mã nguồn mở của Docker. Trong cuốn sách này, chúng ta sẽ dùng registry công khai do Docker lưu trữ có tên là Docker Hub. Chúng ta đã chọn Docker Hub vì nó miễn phí, phổ biến và tích hợp tốt với GitHub Actions.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223567451752">
+<h5>Quyết định then chốt: Sử dụng Docker Hub làm Container Registry</h5>
+<p>Chúng ta sẽ vận chuyển container microservice của mình vào container registry Docker Hub.</p>
+</div></aside>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Configuring Docker Hub"><div class="sect2" id="idm46223567450168">
+<h2>Cấu hình Docker Hub</h2>
+
+<p>Thiết lập một <a data-type="indexterm" data-primary="Docker Hub" data-secondary="configuring" id="idm46223567448664"/><a data-type="indexterm" data-primary="Docker Hub" data-secondary="registry set up" id="idm46223567447688"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="repository" id="idm46223567446744"/>registry Docker Hub mới khá đơn giản. Tất cả những gì bạn cần làm là đăng nhập vào Docker Hub và tạo một registry. Bạn có thể tạo một repository cho ví dụ ứng dụng flights của chúng ta bằng cách làm theo các bước sau:</p>
+<ol>
+<li>
+<p>Đi tới <a href="https://hub.docker.com">trang chủ Docker Hub</a> trên trình duyệt.</p>
+</li>
+<li>
+<p>Đăng nhập vào Docker Hub.</p>
+</li>
+<li>
+<p>Nhấp nút Create Repository.</p>
+</li>
+<li>
+<p>Đặt tên repository là “flights.”</p>
+</li>
+<li>
+<p>Nhấp nút Create.</p>
+</li>
+
+</ol>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Để sử dụng Docker Hub, bạn sẽ cần có một tài khoản Docker. Nếu bạn đã cài Docker khi thiết lập môi trường phát triển, bạn sẽ có Docker ID rồi. Nếu chưa có ID, hãy truy cập <a href="https://hub.docker.com"><em class="hyperlink">https://hub.docker.com</em></a> và tạo một tài khoản.</p>
+</div>
+
+<p>Nếu gặp vấn đề trong quá trình này, hãy truy cập <a href="https://oreil.ly/owCnP">trang tài liệu Docker</a>. Khi đã có tài khoản Docker và repository container, chúng ta đã sẵn sàng build và đẩy container vào đó bằng một pipeline CI/CD.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Configuring the Pipeline"><div class="sect2" id="idm46223567435528">
+<h2>Cấu hình Pipeline</h2>
+
+<p>Cho đến nay, chúng ta vẫn dùng GitHub Actions làm <a data-type="indexterm" data-primary="CI/CD pipeline" data-secondary="configuring" id="idm46223567434008"/><a data-type="indexterm" data-primary="containers" data-secondary="shipping" data-tertiary="pipeline configuration" id="idm46223567433032"/><a data-type="indexterm" data-primary="shipping container" data-secondary="pipeline configuration" id="idm46223567431816"/>công cụ pipeline cho toàn bộ công việc cấp phát dựa trên IaC. Nó hoạt động đủ tốt cho nhu cầu của chúng ta, vì vậy để giữ sự nhất quán, chúng ta sẽ tiếp tục dùng Actions làm pipeline cho các bản build container của microservice. Một lợi ích nữa là chúng ta có thể tận dụng các action do Docker phát hành để việc tích hợp với Docker Hub trở nên dễ dàng hơn.</p>
+
+<p>Trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>, chúng ta đã đi qua quy trình tạo microservice thông tin chuyến bay. Nếu bạn đã làm theo các bước đó, bạn sẽ có một repository GitHub chứa mã nguồn và các makefile (xem <a data-type="xref" href="#coding-repo">Hình 10-7</a>). Chúng ta sẽ tạo workflow GitHub Actions ngay trong repository này để pipeline CI có thể nằm ngay cạnh mã nguồn. Nếu bạn chưa có repository dịch vụ flights của riêng mình, bạn có thể tạo một bản fork từ <a href="https://oreil.ly/Microservices_UpandRunning_msflights">repository ví dụ của cuốn sách</a>.</p>
+
+<figure><div id="coding-repo" class="figure">
+<img src="assets/msur_1007.png" alt="The second of four repositories"/>
+<h6><span class="label">Hình 10-7. </span>Build một container trong repository dịch vụ flights</h6>
+</div></figure>
+
+<p>Giống như trước đây, chúng ta sẽ bắt đầu cấu hình pipeline bằng cách thêm thông tin xác thực vào repository GitHub.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Configuring Docker Hub secrets"><div class="sect3" id="idm46223567424360">
+<h3>Cấu hình secret cho Docker Hub</h3>
+
+<p>Workflow của chúng ta sẽ cần <a data-type="indexterm" data-primary="Docker Hub" data-secondary="secrets, configuring" id="idm46223567422840"/><a data-type="indexterm" data-primary="secrets" data-secondary="Docker Hub" id="idm46223567421864"/><a data-type="indexterm" data-primary="containers" data-secondary="shipping" data-tertiary="Docker Hub secrets" id="idm46223567420920"/><a data-type="indexterm" data-primary="shipping container" data-secondary="Docker Hub" data-tertiary="secrets" id="idm46223567419704"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="Docker Hub secrets" id="idm46223567418488"/>giao tiếp với Docker Hub để xuất bản container. Vì vậy, chúng ta sẽ cần thêm thông tin truy cập Docker Hub của mình dưới dạng secret trong repository GitHub của flights. Cụ thể, chúng ta cần tạo và điền hai khóa secret như định nghĩa trong <a data-type="xref" href="#dockerhub-secrets">Bảng 10-3</a>. Đây cũng chính là các thông tin xác thực mà bạn dùng để đăng nhập vào Docker Hub.</p>
+<table id="dockerhub-secrets">
+<caption><span class="label">Bảng 10-3. </span>Secret GitHub cho Docker Hub</caption>
+<thead>
+<tr>
+<th>Khóa</th>
+<th>Mô tả</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>DOCKER_USERNAME</code></p></td>
+<td><p>Định danh tài khoản Docker của bạn</p></td>
+</tr>
+<tr>
+<td><p><code>DOCKER_PASSWORD</code></p></td>
+<td><p>Mật khẩu tài khoản Docker của bạn</p></td>
+</tr>
+</tbody>
+</table>
+
+<p>Chúng ta đã đi qua chi tiết về <a data-type="indexterm" data-primary="secrets" data-secondary="setup" id="idm46223567408728"/>việc thiết lập secret vài lần rồi, nhưng để nhắc lại nhanh, bạn sẽ cần làm như sau:</p>
+<ol>
+<li>
+<p>Dùng trình duyệt, đi tới trang settings của repository ms-flights đã fork trong GitHub.</p>
+</li>
+<li>
+<p>Chọn Secrets ở điều hướng bên trái.</p>
+</li>
+<li>
+<p>Thêm secret bạn muốn định nghĩa bằng cách nhấp New Secret.</p>
+</li>
+
+</ol>
+
+<p>Bạn có thể để ý rằng chúng ta không thêm bất kỳ secret tài khoản AWS nào vào repository này. Đó là vì pipeline này sẽ không triển khai vào một instance AWS. Workflow này sẽ chỉ tập trung vào việc đẩy container vào Docker Hub registry, chứ không triển khai container vào môi trường staging của chúng ta.</p>
+
+<p>Đây là một sự tách biệt hữu ích, vì chúng ta muốn container microservice của mình có tính di động và không phụ thuộc môi trường (nghĩa là chúng ta sẽ không thêm logic hay giá trị phụ thuộc môi trường vào bản build). Việc dùng cùng một container đã build cho tất cả các môi trường kiểm thử và phát hành sẽ giúp cải thiện độ tin cậy chung của hệ thống.</p>
+
+<p>Giờ việc duy nhất còn lại là tạo workflow thực hiện công việc build, kiểm thử và vận chuyển container.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Shipping the flight service container"><div class="sect3" id="idm46223567402056">
+<h3>Phát hành container của dịch vụ flights</h3>
+
+<p>Nếu bạn đã fork repository ms-flights, bạn sẽ <a data-type="indexterm" data-primary="containers" data-secondary="shipping" data-tertiary="flights microservice" id="contship"/><a data-type="indexterm" data-primary="shipping container" data-secondary="flights microservice" id="shipcont"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="shipping" id="flightship"/>thấy rằng chúng tôi đã viết sẵn cho bạn một workflow GitHub Actions để build và phát hành container. Tất cả những gì bạn cần làm là bật workflow bằng cách vào tab Actions trong repository đã fork, nơi bạn sẽ được nhắc bật workflow. Nếu bạn tự xây dựng repository ms-flights của mình, bạn có thể sao chép <a href="https://oreil.ly/Microservices_UpandRunning_mainyaml">mã workflow</a> vào thư mục workflows của riêng bạn.</p>
+
+<p>Workflow GitHub Actions mà chúng tôi định nghĩa sẽ được kích hoạt bởi một thẻ phát hành, và có các bước sau:</p>
+<ol>
+<li>
+<p>Chạy unit test trên mã nguồn</p>
+</li>
+<li>
+<p>Build một phiên bản container hóa của microservice</p>
+</li>
+<li>
+<p>Đẩy container lên Docker Hub registry</p>
+</li>
+
+</ol>
+
+<p>Chúng ta đã thêm thông tin xác thực Docker Hub vào repository, vì vậy workflow đã sẵn sàng để chạy. Việc duy nhất cần làm là đẩy một thẻ tên <code>v1.0</code> vào phần phát hành để kích hoạt workflow CI/CD. Chúng ta đã làm điều này vài lần bằng dòng lệnh và bản sao cục bộ của repository. Nhưng để tiết kiệm thời gian, lần này chúng ta sẽ kích hoạt bản build bằng giao diện GitHub trên trình duyệt.</p>
+
+<p>Trong trình duyệt, hãy vào tab Code của repository GitHub ms-flights đã fork. Ở phía bên phải màn hình, nhấp liên kết “Create a new release” trong phần Releases, như minh họa trong <a data-type="xref" href="#create-new-release">Hình 10-8</a>.</p>
+
+<figure><div id="create-new-release" class="figure">
+<img src="assets/msur_1008.png" alt="The create a new release link"/>
+<h6><span class="label">Hình 10-8. </span>Tạo một release mới</h6>
+</div></figure>
+
+<p>Tiếp theo, nhập giá trị <code>v1.0</code> vào trường tag version, như minh họa trong <a data-type="xref" href="#tag-version">Hình 10-9</a>. Sau đó nhấp nút Publish Release ở cuối màn hình.</p>
+
+<figure><div id="tag-version" class="figure">
+<img src="assets/msur_1009.png" alt="Tag version 1.0"/>
+<h6><span class="label">Hình 10-9. </span>Đặt tag version 1.0</h6>
+</div></figure>
+
+<p>Việc publish một GitHub release với tag <code>v1.0</code> cũng tương đương với việc đẩy tag bằng Git CLI. Kết quả cuối cùng là workflow GitHub Actions của chúng ta sẽ được kích hoạt. Bạn có thể vào tab Actions trong repository và xác nhận rằng một workflow tên <code>CICD</code> đã bắt đầu chạy. Quá trình này sẽ mất vài phút để chạy makefile và đóng gói container. Khi hoàn tất, container dịch vụ flights sẽ được đẩy lên và sẵn sàng sử dụng trong Docker Hub registry.</p>
+
+<p>Để xác nhận container đã được phát hành, hãy truy cập tài khoản Docker Hub của bạn trên trình duyệt và xem danh sách repository. Bạn sẽ thấy một mục cho container flights vừa được đẩy lên. Nó sẽ trông giống như <a data-type="xref" href="#container-pushed">Hình 10-10</a>.</p>
+
+<figure><div id="container-pushed" class="figure">
+<img src="assets/msur_1010.png" alt="The container has been deployed into DockerHub"/>
+<h6><span class="label">Hình 10-10. </span>Container ms-flights đã được đẩy lên</h6>
+</div></figure>
+
+<p>Giờ đây, chúng ta đã có một microservice ms-flights được container hóa sẵn sàng để triển khai vào môi trường staging. Khi các microservice đã được đẩy lên container registry, chúng ta có thể chuyển sang công việc <a data-type="indexterm" data-primary="containers" data-secondary="shipping" data-startref="contship" id="idm46223567377208"/><a data-type="indexterm" data-primary="shipping container" data-startref="shipcont" id="idm46223567375960"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="shipping" data-startref="flightship" id="idm46223567375016"/>triển khai container vào môi trường staging của mình.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Deploying the Flights Service Container"><div class="sect1" id="deploying-flight-container">
+<h1>Triển khai Container Dịch vụ Flights</h1>
+
+<p>Giờ đây, chúng ta đã có đủ mọi mảnh ghép <a data-type="indexterm" data-primary="containers" data-secondary="flights microservice" id="idm46223567372024"/><a data-type="indexterm" data-primary="deployment" data-secondary="containers, flights microservice" id="idm46223567371048"/>để triển khai microservice flights. Chúng ta đã cấp phát một môi trường kiểm thử bằng pipeline hạ tầng, đồng thời đã tạo một image container hóa có thể triển khai cho service. Để hoàn tất việc triển khai, chúng ta sẽ dùng công cụ triển khai GitOps Argo CD mà mình đã cài trong stack hạ tầng ở <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>. Khi kết thúc phần này, chúng ta sẽ có một phiên bản đang chạy của microservice thông tin chuyến bay đã được triển khai và sẵn sàng sử dụng.</p>
+
+<p>Để việc triển khai lặp lại được dễ hơn, chúng ta sẽ tạo một repository triển khai mới chứa các package Helm. Chúng ta lần đầu giới thiệu Helm ở <a data-type="xref" href="ch07.html#setting-up-argo">“Thiết lập Argo CD”</a>, khi xây dựng môi trường đầu tiên. Các package Helm mà chúng ta tạo sẽ mô tả cách một microservice nên được triển khai. Khi chúng sẵn sàng và được đẩy lên repository triển khai, Argo CD sẽ dùng chúng để triển khai container vào môi trường staging (<a data-type="xref" href="#container-deployment">Hình 10-11</a>).</p>
+
+<figure><div id="container-deployment" class="figure">
+<img src="assets/msur_1011.png" alt="The container has been deployed into DockerHub"/>
+<h6><span class="label">Hình 10-11. </span>Package Helm sẽ định nghĩa việc triển khai service</h6>
+</div></figure>
+
+<p>Toàn bộ công việc triển khai này sẽ diễn ra trong thế giới của Kubernetes, vì vậy hãy cùng có một hiểu biết nền tảng về điều đó nghĩa là gì.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Understanding Kubernetes Deployments"><div class="sect2" id="idm46223567363384">
+<h2>Hiểu về Kubernetes Deployment</h2>
+
+<p>Trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, chúng ta đã giới thiệu <a data-type="indexterm" data-primary="Kubernetes" data-secondary="deployment" id="idm46223567360984"/><a data-type="indexterm" data-primary="deployment" data-secondary="Kubernetes" id="idm46223567360008"/>Kubernetes và cài đặt nó để giúp vận hành và chạy các microservice dựa trên container. Kubernetes phổ biến vì nó xử lý được rất nhiều công việc cần làm để khởi động container, kiểm tra tình trạng sức khỏe của chúng, tìm kiếm service, nhân bản chúng và khởi động lại khi chúng gặp lỗi. Điều này mang lại cho hệ thống của chúng ta các đặc tính phục hồi và tự chữa lành, giúp đáp ứng những nguyên tắc chỉ đạo đã đề ra.</p>
+
+<p>Tuy nhiên, một cụm Kubernetes vẫn cần được chỉ dẫn phải làm gì. Nó không thể triển khai microservice của bạn nếu không biết tìm image container ở đâu. Nó cũng không thể kiểm tra sức khỏe của microservice nếu không biết cần gọi API nào. Chúng ta cũng cần cung cấp cho Kubernetes một số giới hạn về số lượng instance container muốn tạo, cũng như cách các service đó được truy cập qua mạng.</p>
+
+<p>Kubernetes nhìn thế giới như một tập hợp các đối tượng cấu hình mang tính khai báo. Để cấu hình một deployment microservice, bạn sẽ cần mô tả trạng thái tối ưu cho phiên bản đang chạy của container. Miễn là bạn mô tả đúng cấu hình chạy mong muốn, Kubernetes sẽ làm phần việc phía sau để đưa service của bạn vào hoạt động và giữ nó ở trạng thái đó.</p>
+
+<p>Cách tiếp cận khai báo này tương tự như cách chúng ta dùng Terraform để mô tả tài nguyên hạ tầng. Trong Kubernetes, chúng ta sẽ định nghĩa một tập các đối tượng deployment đặc biệt bằng <a data-type="indexterm" data-primary="YAML" data-secondary="deployment object" id="idm46223567356312"/>định dạng YAML. Sự thật là Kubernetes cực kỳ phức tạp, vì vậy chúng ta sẽ không thể đi sâu quá nhiều trong cuốn sách này. Nhưng sẽ rất hữu ích nếu điểm qua một vài đối tượng cốt lõi để hiểu cách microservice của mình sẽ được triển khai.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Understanding Kubernetes objects and controllers"><div class="sect3" id="idm46223567354808">
+<h3>Hiểu các đối tượng và controller trong Kubernetes</h3>
+
+<p>Có rất nhiều đối tượng cần tìm hiểu nếu bạn muốn thực sự hiểu cách vận hành một nền tảng Kubernetes. Nhưng cho mục đích của chúng ta, chỉ cần hiểu ở mức bề mặt năm đối tượng quan trọng để tạo một package triển khai đơn giản cho microservice <a data-type="indexterm" data-primary="flights microservice" data-secondary="deployment package" id="idm46223567352984"/>flights: <code>Pod</code>, <code>ReplicaSet</code>, <code>Deployment</code>, <code>Service</code> và <code>Ingress</code>.</p>
+<dl>
+<dt><code>Pod</code></dt>
+<dd>
+<p><code>Pod</code> là một đối tượng <a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="Pods" id="idm46223567347240"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="Pods" id="idm46223567345960"/><a data-type="indexterm" data-primary="pods" data-secondary="Kubernetes" id="idm46223567344744"/>mô tả đơn vị workload cơ bản. Nó định nghĩa một hoặc nhiều container Docker cần được khởi chạy và quản lý cùng nhau.</p>
+</dd>
+<dt><code>ReplicaSet</code></dt>
+<dd>
+<p><code>ReplicaSet</code> cho Kubernetes <a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="ReplicaSets" id="idm46223567341832"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="ReplicaSets" id="idm46223567340552"/><a data-type="indexterm" data-primary="ReplicaSets, Kubernetes" id="idm46223567339336"/>biết cần khởi chạy và duy trì bao nhiêu instance của một <code>Pod</code> cụ thể cùng một lúc. Thông thường bạn sẽ không cần làm việc trực tiếp với <code>ReplicaSet</code>.</p>
+</dd>
+<dt><code>Deployment</code></dt>
+<dd>
+<p>Controller <code>Deployment</code> <a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="Deployment controller" id="idm46223567335496"/><a data-type="indexterm" data-primary="Deployment controller, Kubernetes" id="idm46223567334216"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="Deployment controller" id="idm46223567333576"/>khai báo trạng thái mong muốn cho một Pod và các <code>ReplicaSet</code> liên quan. Đây là đối tượng chính bạn cần làm việc cùng để tạo một Kubernetes <code>Deployment</code>.</p>
+</dd>
+<dt><code>Service</code></dt>
+<dd>
+<p><code>Service</code> định nghĩa cách <a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="Services" id="idm46223567329272"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="Services" id="idm46223567327992"/><a data-type="indexterm" data-primary="Services, Kubernetes" id="idm46223567326776"/>các ứng dụng trong cụm Kubernetes có thể truy cập <code>Pod</code> này qua mạng, ngay cả khi có nhiều replica đang chạy cùng lúc. Đối tượng <code>Service</code> cho phép bạn định nghĩa một IP và cổng duy nhất để truy cập một nhóm <code>Pod</code> được nhân bản. Gần như lúc nào bạn cũng sẽ muốn định nghĩa một service cho một microservice deployment.</p>
+</dd>
+<dt><code>Ingress</code></dt>
+<dd>
+<p>Đối tượng <code>Ingress</code> cho phép <a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="Ingress" id="idm46223567322504"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="Ingress" id="idm46223567321224"/><a data-type="indexterm" data-primary="Ingress object, Kubernetes" id="idm46223567320008"/>bạn xác định đường vào tới <code>Service</code> của mình cho các ứng dụng bên ngoài cụm. Khai báo <code>Ingress</code> có thể bao gồm các quy tắc định tuyến để bộ điều khiển ingress định tuyến message tới đúng <code>Service</code>.</p>
+</dd>
+</dl>
+
+<p>Để triển khai microservice của mình, chúng ta sẽ cần viết các cấu hình khai báo cho các đối tượng <code>Ingress</code>, <code>Service</code> và <code>Deployment</code>. Mặc dù chúng ta sẽ không viết các cấu hình cho <code>Pod</code> và <code>ReplicaSet</code> dưới dạng tệp riêng, chúng ta vẫn sẽ đưa chi tiết của chúng vào trong cấu hình đối tượng <code>Deployment</code>. Như đã đề cập trước đó, chúng ta sẽ dùng Helm để đóng gói tất cả các tệp này.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Creating a Helm Chart"><div class="sect2" id="idm46223567314248">
+<h2>Tạo Helm Chart</h2>
+
+<p>Một Kubernetes <code>Deployment</code> <a data-type="indexterm" data-primary="deployment" data-secondary="Kubernetes" data-tertiary="Helm charts" id="depkubhelm"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="deployment" data-tertiary="Helm charts" id="kubdephelm"/><a data-type="indexterm" data-primary="Helm (Kubernetes)" id="helm"/>có thể đòi hỏi rất nhiều tương tác với cụm. Bạn cần thực hiện nhiều lệnh gọi tới Kubernetes API để cho nó biết bạn muốn triển khai container như thế nào, khi nào và ở đâu. Để giúp quản lý bớt phần phức tạp đó, chúng ta sẽ dùng công cụ đóng gói Helm.</p>
+
+<p>Helm là một trình quản lý package cho Kubernetes. Nó giúp chúng ta có một cách dễ hơn để quản lý việc cài đặt và triển khai ứng dụng vào cụm Kubernetes. Trước đó trong cuốn sách, chúng ta đã dùng Helm để cài các package có sẵn như Argo CD. Bây giờ, chúng ta sẽ tự viết package Helm của mình để có thể triển khai microservice dễ dàng như vậy.</p>
+
+<p>Để sử dụng Helm, trước tiên chúng ta cần hiểu ba khái niệm quan trọng là chart, template và values:</p>
+<dl>
+<dt>Chart</dt>
+<dd>
+<p>Chart <a data-type="indexterm" data-primary="charts" id="idm46223567304920"/>là một bó tệp mô tả một tài nguyên hoặc một deployment trên Kubernetes. Chart là đơn vị triển khai cốt lõi trong Helm. Trước đó, chúng ta đã dùng các chart dựng sẵn khi triển khai các ứng dụng chạy trên Kubernetes như Argo CD.</p>
+</dd>
+<dt>Template</dt>
+<dd>
+<p>Template là các tệp <a data-type="indexterm" data-primary="templates" data-secondary="charts" id="idm46223567302536"/><a data-type="indexterm" data-primary="charts" data-secondary="templates" id="idm46223567301528"/>trong một chart mô tả một tài nguyên Kubernetes cụ thể. Chúng được gọi là template vì chứa các chỉ dẫn đặc biệt để Helm thay thế giá trị trong tệp. Ví dụ, bạn có thể tạo một template <code>Service</code> cho microservice và biến số cổng của <code>Service</code> thành một giá trị được tham số hóa.</p>
+</dd>
+<dt>Giá trị</dt>
+<dd>
+<p>Mỗi chart đều có một tệp values <a data-type="indexterm" data-primary="values, charts" id="idm46223567297912"/><a data-type="indexterm" data-primary="charts" data-secondary="values" id="idm46223567297208"/>định nghĩa các giá trị sẽ được dùng để điền vào template. Tệp values là một cách hữu ích để quản lý khác biệt giữa các môi trường. Các giá trị cũng có thể được ghi đè khi cài chart bằng Helm.</p>
+</dd>
+</dl>
+
+<p>Để tạo một package Helm cho flights, <a data-type="indexterm" data-primary="flights microservice" data-secondary="Helm package" id="idm46223567295400"/>chúng ta sẽ cần tạo một Helm chart. Trong chart đó, chúng ta sẽ định nghĩa một bộ các tệp template khai báo cách dịch vụ flights nên được triển khai. Template của chúng ta sẽ có một số giá trị được tham số hóa để có thể dùng cho các loại môi trường khác nhau. Cuối cùng, chúng ta sẽ tạo một tệp values cho môi trường staging để điền vào các template.</p>
+
+<p>Như đã mô tả trong <a data-type="xref" href="#deploying-flight-container">“Triển khai Container Dịch vụ Flights”</a>, chúng ta muốn các Helm chart của mình khả dụng để Argo CD <a data-type="indexterm" data-primary="Argo CD" data-secondary="Helm charts" id="idm46223567292712"/>truy xuất và sử dụng. Vì vậy, việc đầu tiên cần làm là tạo một repository triển khai microservice <a data-type="indexterm" data-primary="deployment" data-secondary="Kubernetes" data-tertiary="Helm charts" data-startref="depkubhelm" id="idm46223567291432"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="deployment" data-tertiary="Helm charts" data-startref="kubdephelm" id="idm46223567289944"/><a data-type="indexterm" data-primary="Helm (Kubernetes)" data-startref="helm" id="idm46223567288456"/>để lưu trữ và quản lý chúng.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Creating the Microservices Deployment Repository"><div class="sect2" id="create-deployment-repository">
+<h2>Tạo Repository Triển khai Microservice</h2>
+
+<p>Chúng ta sẽ giữ các Helm <a data-type="indexterm" data-primary="deployment" data-secondary="repository" id="deployrepo"/><a data-type="indexterm" data-primary="repositories" data-secondary="microservice deployment" id="reposervdep"/>chart trong một “monorepo” duy nhất cho triển khai microservice. Cách này phù hợp với mô hình vận hành của chúng ta và cho phép nhóm release quản lý việc phát hành service theo cách toàn diện hơn. Các nhóm microservice vẫn có thể sở hữu Helm deployment chart của riêng mình và triển khai vào repository triển khai một cách độc lập (xem <a data-type="xref" href="#deployment-repo">Hình 10-12</a>).</p>
+
+<figure><div id="deployment-repo" class="figure">
+<img src="assets/msur_1012.png" alt="The third of four repositories"/>
+<h6><span class="label">Hình 10-12. </span>Tạo package triển khai trong repository triển khai</h6>
+</div></figure>
+
+<p>Để bắt đầu, hãy tạo một repository GitHub mới có tên là ms-deploy. Khi đã sẵn sàng, hãy tạo một bản clone cục bộ của repository đó trong môi trường phát triển của bạn. Chúng ta đã làm việc này vài lần rồi nên sẽ không đi lại toàn bộ chi tiết. Nếu bạn cần gợi nhớ quy trình tạo repository, <a href="https://oreil.ly/TdrGG">tài liệu GitHub Quickstart</a> là nơi phù hợp để bắt đầu.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Repository triển khai mà bạn đang tạo lúc này sẽ trở thành “source of truth” cho công cụ triển khai GitOps Argo CD mà chúng ta sẽ thiết lập sau trong chương này.</p>
+</div>
+
+<p>Bây giờ, bạn hẳn đã có một repository Git rỗng sẵn sàng để được điền bằng các 
+<span class="keep-together">gói Helm.</span></p>
+
+<p>Cách dễ nhất để bắt đầu làm việc với các tệp Helm là dùng ứng dụng Helm CLI. CLI của Helm cho phép bạn tạo, cài đặt và kiểm tra Helm chart bằng Kubernetes API. Trong các ví dụ của mình, chúng ta sẽ dùng Helm phiên bản 3.2.4, bạn có thể tìm thấy nó tại <a href="https://oreil.ly/ohMF7">trang GitHub này</a>.</p>
+
+<p>Nếu bạn chưa có Helm CLI, hãy tải xuống và cài đặt nó trên máy cục bộ ngay bây giờ. Khi đã xong, bạn sẽ sẵn sàng <a data-type="indexterm" data-primary="deployment" data-secondary="repository" data-startref="deployrepo" id="idm46223567273896"/><a data-type="indexterm" data-primary="repositories" data-secondary="microservice deployment" data-startref="reposervdep" id="idm46223567272648"/>tạo Helm chart ms-flights.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Create a Helm chart"><div class="sect3" id="idm46223567271176">
+<h3>Tạo Helm chart</h3>
+
+<p>Một trong những điểm hay của <a data-type="indexterm" data-primary="Helm (Kubernetes)" data-secondary="chart creation" id="idm46223567269704"/><a data-type="indexterm" data-primary="charts" data-secondary="Helm charts, creating" id="idm46223567268728"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="Helm charts, creating" id="idm46223567267784"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="Helm charts" id="idm46223567266840"/>Helm CLI là nó cung cấp một chức năng tiện lợi để nhanh chóng bootstrap một chart mới. Để tạo chart khung của mình, hãy bảo đảm bạn đang ở thư mục gốc của repository ms-deploy và chạy lệnh sau:</p>
+
+<pre data-type="programlisting">ms-deploy $ helm create ms-flights</pre>
+
+<p>Khi hoàn tất, Helm sẽ tạo một package cơ bản chứa tệp <em>chart.yaml</em> mô tả chart của chúng ta, một tệp <em>values.yaml</em> có thể dùng để tùy biến giá trị chart, và một thư mục <em>templates</em> chứa cả một bộ template YAML Kubernetes <a data-type="indexterm" data-primary="YAML" data-secondary="templates" id="idm46223567262920"/><a data-type="indexterm" data-primary="templates" data-secondary="YAML" id="idm46223567261864"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="YAML templates" id="idm46223567260920"/>cho một deployment cơ bản.</p>
+
+<p>Điều tuyệt vời khi dùng Helm là phần lớn mã boilerplate mà chúng ta cần viết cho một deployment microservice cơ bản trên Kubernetes đã được xử lý sẵn. Chúng ta chỉ cần thực hiện một vài thay đổi nhỏ trong các template mà Helm đã tạo để có một package hoạt động được và có thể triển khai.</p>
+
+<p>Cụ thể, chúng ta sẽ cần cập nhật tệp <em>templates/deployment.yaml</em> một chút để nó cụ thể hơn cho container mà chúng ta muốn triển khai.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Update the flights deployment template"><div class="sect3" id="idm46223567258040">
+<h3>Cập nhật template deployment cho flights</h3>
+
+<p>Tệp <em>/ms-flights/templates/deployment.yaml</em> là một tệp mô tả <a data-type="indexterm" data-primary="deployment template" id="idm46223567255944"/><a data-type="indexterm" data-primary="templates" data-secondary="deployment" id="idm46223567255272"/><a data-type="indexterm" data-primary="Kubernetes" data-secondary="objects" data-tertiary="description file" id="idm46223567254328"/><a data-type="indexterm" data-primary="objects" data-secondary="Kubernetes" data-tertiary="description file" id="idm46223567253112"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="deployment template" id="idm46223567251896"/>đối tượng Kubernetes, khai báo trạng thái triển khai đích cho một Pod. Chúng ta đã nhắc đến việc các đối tượng Kubernetes có thể trở nên khá phức tạp. Tin tốt là tệp mà Helm đã tạo sẵn cho chúng ta có rất nhiều giá trị placeholder có thể giữ nguyên. Nhưng chúng ta vẫn cần thực hiện một vài thay đổi nhỏ để deployment này hoạt động cho microservice flights của mình.</p>
+
+<p>Hãy bắt đầu bằng cách hiểu ở mức cơ bản một vài thuộc tính YAML quan trọng trong đối tượng deployment:</p>
+<dl>
+<dt><code>apiVersion</code></dt>
+<dd>
+<p>Mọi tệp YAML của Kubernetes đều chỉ rõ phiên bản của Kubernetes API mà tệp đó sử dụng.</p>
+</dd>
+<dt><code>kind</code></dt>
+<dd>
+<p>Thuộc tính này xác định loại đối tượng Kubernetes. Trong trường hợp này, đối tượng Kubernetes là <code>Deployment</code>.</p>
+</dd>
+<dt><code>spec</code></dt>
+<dd>
+<p>Đặc tả của đối tượng Kubernetes, đây là phần cốt lõi của bản mô tả.</p>
+</dd>
+<dt><code>spec.replicas</code></dt>
+<dd>
+<p>Chỉ rõ số lượng replica mà chúng ta muốn cho deployment này. Kubernetes sẽ tạo ReplicaSet cho chúng ta dựa trên giá trị này.</p>
+</dd>
+<dt><code>spec.template</code></dt>
+<dd>
+<p>Thuộc tính <code>template</code> trong đặc tả <code>Deployment</code> là template cho Pod mà chúng ta dự định triển khai. Kubernetes dùng template này để cấp phát các pod trong deployment.</p>
+</dd>
+<dt><code>spec.template.containers</code></dt>
+<dd>
+<p>Thuộc tính <code>containers</code> của template Pod xác định image container và các giá trị môi trường mà Kubernetes nên dùng khi tạo một replica của Pod.</p>
+</dd>
+</dl>
+
+<p>Đối với deployment đơn giản của chúng ta, chúng ta sẽ dùng các giá trị mặc định mà Helm đã tạo cho hầu hết thuộc tính của đối tượng <code>Deployment</code>. Nhưng chúng ta sẽ cần cập nhật <code>spec.template.containers</code> để nó hoạt động với container ms-flights mà mình đã build.</p>
+
+<p>Hãy cập nhật YAML cho thuộc tính <code>containers</code> để nó chứa các giá trị <code>env</code>, <code>ports</code>, <code>livenessProbe</code> và <code>readinessProbe</code> như trong <a data-type="xref" href="#template-containers">Ví dụ 10-3</a>.</p>
+<div id="template-containers" data-type="example">
+<h5><span class="label">Ví dụ 10-3. </span>Đặc tả template ms-flights</h5>
+
+<pre data-type="programlisting" data-code-language="yaml"><code class="nt">spec</code><code class="p">:</code>
+<code class="p-Indicator">[</code><code class="nv">...</code><code class="p-Indicator">]</code>
+  <code class="nt">template</code><code class="p">:</code>
+  <code class="p-Indicator">[</code><code class="nv">...</code><code class="p-Indicator">]</code>
+    <code class="nt">spec</code><code class="p">:</code>
+    <code class="p-Indicator">[</code><code class="nv">...</code><code class="p-Indicator">]</code>
+      <code class="nt">containers</code><code class="p">:</code>
+        <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Chart.Name</code> <code class="p-Indicator">}}</code>
+          <code class="p-Indicator">[</code><code class="nv">...</code><code class="p-Indicator">]</code>
+          <code class="nt">imagePullPolicy</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.image.pullPolicy</code> <code class="p-Indicator">}}</code>
+          <code class="nt">env</code><code class="p">:</code>
+            <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">MYSQL_HOST</code>
+              <code class="nt">value</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.MYSQL_HOST | quote</code> <code class="p-Indicator">}}</code>
+            <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">MYSQL_USER</code>
+              <code class="nt">value</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.MYSQL_USER | quote</code> <code class="p-Indicator">}}</code>
+            <code class="p-Indicator">-</code> <code class="nt">name </code><code class="p">:</code> <code class="l-Scalar-Plain">MYSQL_PASSWORD</code>
+              <code class="nt">valueFrom</code><code class="p">:</code>
+                <code class="nt">secretKeyRef</code><code class="p">:</code>
+                  <code class="nt">name</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.MYSQLSecretName</code> <code class="p-Indicator">}}</code>
+                  <code class="nt">key</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.MYSQLSecretKey</code> <code class="p-Indicator">}}</code>
+            <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">MYSQL_DATABASE</code>
+              <code class="nt">value</code><code class="p">:</code> <code class="p-Indicator">{{</code> <code class="nv">.Values.MYSQL_DATABASE | quote</code> <code class="p-Indicator">}}</code>
+          <code class="nt">ports</code><code class="p">:</code>
+            <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">http</code>
+              <code class="nt">containerPort</code><code class="p">:</code> <code class="l-Scalar-Plain">5501</code>
+              <code class="nt">protocol</code><code class="p">:</code> <code class="l-Scalar-Plain">TCP</code>
+          <code class="nt">livenessProbe</code><code class="p">:</code>
+            <code class="nt">httpGet</code><code class="p">:</code>
+              <code class="nt">path</code><code class="p">:</code> <code class="l-Scalar-Plain">/ping</code>
+              <code class="nt">port</code><code class="p">:</code> <code class="l-Scalar-Plain">http</code>
+          <code class="nt">readinessProbe</code><code class="p">:</code>
+            <code class="nt">httpGet</code><code class="p">:</code>
+              <code class="nt">path</code><code class="p">:</code> <code class="l-Scalar-Plain">/health</code>
+              <code class="nt">port</code><code class="p">:</code> <code class="l-Scalar-Plain">http</code>
+          <code class="p-Indicator">[</code><code class="nv">...</code><code class="p-Indicator">]</code></pre></div>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Một ví dụ hoàn chỉnh về Helm chart ms-flights có tại <a href="https://oreil.ly/Microservices_UpandRunning_msflights">trang GitHub của cuốn sách</a>.</p>
+</div>
+
+<p>Bản cập nhật mà chúng ta thực hiện cho phần <code>containers</code> bao gồm những nội dung sau:</p>
+
+<ul>
+<li>
+<p>Một tập biến môi trường được tham số hóa <a data-type="indexterm" data-primary="MySQL" data-secondary="environment variables" id="idm46223567106632"/><a data-type="indexterm" data-primary="environment variables, MySQL databases" id="idm46223567105656"/>để kết nối tới cơ sở dữ liệu MySQL (chúng ta sẽ đặt giá trị thực tế sau)</p>
+</li>
+<li>
+<p>Cổng TCP mà microservice flights sẽ bind vào và container của chúng ta 
+<span class="keep-together">expose</span></p>
+</li>
+<li>
+<p>Các endpoint liveness và readiness mà Kubernetes sẽ dùng để kiểm tra xem Pod còn sống hay không (như đã định nghĩa trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>)</p>
+</li>
+</ul>
+
+<p>Đó là tất cả những gì chúng ta cần tùy biến để các template Helm được tạo sẵn hoạt động cho mình. Với template deployment đã tạo, chúng ta đã có một đối tượng Kubernetes Deployment được tham số hóa. Giờ chúng ta chỉ cần định nghĩa một số giá trị để sử dụng trong 
+<span class="keep-together">template.</span></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Set package values"><div class="sect3" id="idm46223567257448">
+<h3>Thiết lập giá trị cho package</h3>
+
+<p>Một trong những điều hay <a data-type="indexterm" data-primary="Helm package" data-secondary="values" id="helmvalue"/><a data-type="indexterm" data-primary="deployment" data-secondary="Helm package" data-tertiary="Argo CD" id="helmpackargo"/><a data-type="indexterm" data-primary="Argo CD" data-secondary="Helm package" id="argohelm"/>khi sử dụng một package Helm cho deployment là chúng ta có thể tái sử dụng cùng một template cho nhiều môi trường khác nhau chỉ bằng cách thay đổi một vài giá trị. Một cách để đặt các giá trị đó là thông qua Helm client tại thời điểm cài đặt. Trước đó trong cuốn sách, chúng ta đã làm điều này khi cài package Helm cho Argo CD.</p>
+
+<p>Một lựa chọn khác là tạo một tệp tuần tự hóa toàn bộ các giá trị bạn muốn sử dụng vào một nơi duy nhất. Đây là cách tiếp cận mà chúng ta sẽ dùng cho package triển khai của mình. Nó mang lại lợi thế là có thể quản lý các tệp giá trị triển khai như mã. Chúng ta sẽ dùng chính tệp <em>values.yaml</em> mà Helm đã tạo sẵn cho mình. Bạn sẽ tìm thấy tệp đó ở thư mục gốc của chart ms-flights.</p>
+
+<p>Đầu tiên, chúng ta cần cập nhật thông tin cho Docker image. Mở tệp <em>values.yaml</em> trong trình soạn thảo văn bản bạn ưa thích và tìm khóa <code>image</code> ở phần đầu tệp YAML. Cập nhật <code>image</code> bằng các chi tiết trong <a data-type="xref" href="#image-yaml">Ví dụ 10-4</a>.</p>
+<div id="image-yaml" data-type="example">
+<h5><span class="label">Ví dụ 10-4. </span>Ví dụ về image</h5>
+
+<pre data-type="programlisting">replicaCount: 1
+
+image:
+  repository: "msupandrunning/flights"
+  pullPolicy: IfNotPresent
+  tag: "v1.0"</pre></div>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Ví dụ này sử dụng container mà chúng tôi đã build sẵn cho bạn. Nếu bạn muốn dùng container của riêng mình, bạn sẽ cần thay đổi giá trị của <code>repository</code> và <code>tag</code>.</p>
+</div>
+
+<p>Tiếp theo, chúng ta sẽ thêm các giá trị kết nối MySQL <a data-type="indexterm" data-primary="MySQL" data-secondary="connection values" id="idm46223567085400"/>để microservice có thể kết nối tới các dịch vụ cơ sở dữ liệu của môi trường staging. Hãy thêm YAML sau vào tệp values của bạn (bạn có thể thêm ngay sau thuộc tính <code>tag</code>):</p>
+
+<pre data-type="programlisting">image:
+[..]
+
+MYSQL_HOST: rds.staging.msur-vpc.com
+MYSQL_USER: microservices
+MYSQL_DATABASE: microservices_db
+MYSQLSecretName: mysql
+MYSQLSecretKey: password</pre>
+
+<p>Cuối cùng, hãy tìm thuộc tính <code>ingress</code> gần cuối tệp YAML và cập nhật nó bằng nội dung sau:</p>
+
+<pre data-type="programlisting">ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: traefik
+  hosts:
+    - host: flightsvc.com
+      paths: ["/flights"]</pre>
+
+<p>Định nghĩa này cho Ingress service của chúng ta biết rằng nó phải định tuyến mọi message được gửi tới host <em>flightsvc.com</em> với URI <em>/flights</em> đến microservice thông tin chuyến bay. Chúng ta sẽ không cần thực sự host service tại domain <em>flightsvc.com</em>; chỉ cần bảo đảm rằng các HTTP request có những giá trị đó nếu muốn chúng đến được 
+<span class="keep-together">service.</span></p>
+
+<p>Trong môi trường production, có lẽ chúng ta sẽ muốn có thêm nhiều giá trị và thay đổi template hơn. Nhưng <a data-type="indexterm" data-primary="Helm package" data-secondary="values" data-startref="helmvalue" id="idm46223567077976"/><a data-type="indexterm" data-primary="deployment" data-secondary="Helm package" data-tertiary="Argo CD" data-startref="helmpackargo" id="idm46223567076728"/><a data-type="indexterm" data-primary="Argo CD" data-secondary="Helm package" data-startref="argohelm" id="idm46223567075240"/>để có thể khởi động và chạy, như vậy là quá đủ.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Test and commit the package"><div class="sect3" id="idm46223567099480">
+<h3>Kiểm thử và commit package</h3>
+
+<p>Việc cuối cùng chúng ta cần làm <a data-type="indexterm" data-primary="Helm package" data-secondary="testing" id="idm46223567072328"/><a data-type="indexterm" data-primary="deployment" data-secondary="Helm package" data-tertiary="testing" id="idm46223567071352"/><a data-type="indexterm" data-primary="flights microservice" data-secondary="Helm package" data-tertiary="testing" id="idm46223567070136"/>là một bài kiểm tra dry-run nhanh để bảo đảm rằng chúng ta không mắc lỗi cú pháp nào. Bạn sẽ cần có kết nối tới cụm Kubernetes của mình, vì vậy hãy chắc chắn rằng môi trường đó vẫn còn truy cập được. Chạy lệnh sau để bảo đảm Helm có thể build package:</p>
+
+<pre data-type="programlisting">ms-flights$ helm install --debug --dry-run flight-info .</pre>
+
+<p>Nếu hoạt động, Helm sẽ trả về rất nhiều YAML cho thấy các đối tượng mà nó sẽ sinh ra. Phần cuối của kết quả sẽ trông như thế này:</p>
+
+<pre data-type="programlisting">[... lots of YAML...]
+  backend:
+              serviceName: flight-info-ms-flights
+              servicePort: 80
+NOTES:
+1. Get the application URL by running these commands:
+  http://flightsvc.com/flights</pre>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nếu bạn gặp khó khăn khi làm cho package Helm hoạt động, hãy xem một ví dụ tham chiếu cho package dịch vụ flights tại <a href="https://oreil.ly/Microservices_UpandRunning_msflights_ex">repository ví dụ của cuốn sách</a>.</p>
+</div>
+
+<p>Nếu mọi thứ trông ổn, hãy commit các tệp Helm đã hoàn thiện vào repository GitHub:</p>
+
+<pre data-type="programlisting">ms-flights$ git add .
+ms-flights$ git commit -m "initial commit"
+ms-flights$ git push origin</pre>
+
+<p>Bây giờ, khi các tệp package đã có sẵn trong deployment monorepo, chúng ta đã sẵn sàng dùng chúng cùng với công cụ triển khai GitOps Argo CD.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Argo CD for GitOps Deployment"><div class="sect2" id="idm46223567286664">
+<h2>Argo CD cho Triển khai GitOps</h2>
+
+<p>Cho đến lúc này, chúng ta đã tạo một <a data-type="indexterm" data-primary="GitOps" data-secondary="Argo CD" data-tertiary="deployment" id="idm46223567061064"/><a data-type="indexterm" data-primary="Argo CD" data-secondary="GitOps and" id="idm46223567059816"/><a data-type="indexterm" data-primary="deployment" data-secondary="GitOps, Argo CD" id="idm46223567058872"/>chart Helm mang lại cho chúng ta một cách dễ sử dụng hơn để triển khai microservice vào cụm Kubernetes. Helm có sẵn khả năng triển khai vào cụm Kubernetes, vì vậy chúng ta đã làm đủ để có thể triển khai dịch vụ thông tin chuyến bay vào môi trường staging.</p>
+
+<p>Nhưng với những gì đang có, đây vẫn sẽ là một thao tác rất thủ công và chúng ta sẽ cần dùng Helm CLI cho mỗi lần triển khai. Chúng ta cũng sẽ phải tìm cách theo dõi trạng thái hiện tại và phiên bản của các service đã triển khai để biết liệu có cần một lần triển khai mới khi repository triển khai được cập nhật hay không.</p>
+
+<p>Thay vào đó, chúng ta có thể làm điều gì đó tốt hơn. Trước đó trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, chúng ta đã giới thiệu Argo CD như công cụ continuous deployment. Bây giờ là cơ hội để sử dụng nó và cải thiện cách chúng ta triển khai service vào các môi trường của mình.</p>
+
+<p>Argo CD là một công cụ triển khai GitOps, được thiết kế để dùng một Git repository làm nguồn cho trạng thái triển khai mong muốn của workload và service. Khi nó kiểm tra một repository mà chúng ta đã chỉ định, nó sẽ xác định liệu trạng thái đích mà chúng ta định nghĩa có khớp với trạng thái đang chạy trong môi trường hay không. Nếu không khớp, Argo CD có thể “đồng bộ hóa” deployment để khớp với những gì chúng ta đã khai báo trong Helm chart.</p>
+
+<p>Cách tiếp cận mang tính khai báo này rất phù hợp với các nguyên tắc và những công cụ khác mà chúng ta đã sử dụng, như Terraform. Để phép màu đó xảy ra, chúng ta chỉ cần đăng nhập vào instance Argo CD đã được cài trong staging, trỏ nó tới repository ms-deploy và thiết lập một deployment được đồng bộ hóa.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Hãy chắc chắn bạn đã thêm MySQL password Kubernetes Secret như mô tả trong <a data-type="xref" href="#create-kubernetes-secret">“Tạo một Kubernetes secret”</a>. Nếu không, dịch vụ thông tin chuyến bay sẽ không thể khởi động.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Log in to Argo CD"><div class="sect3" id="idm46223567051592">
+<h3>Đăng nhập vào Argo CD</h3>
+
+<p>Trước khi có thể đăng nhập vào Argo CD, chúng ta sẽ <a data-type="indexterm" data-primary="Argo CD" data-secondary="log in" id="argolog"/>cần lấy mật khẩu cho người dùng quản trị Argo. Argo CD làm một điều khá thông minh là đặt mật khẩu mặc định giống với tên của đối tượng Kubernetes mà nó chạy trên đó. Hãy chạy lệnh <code>kubectl</code> sau để tìm <code>Pod</code> của Argo CD:</p>
+
+<pre data-type="programlisting">$ kubectl get pods -n "argocd" | grep argocd-server
+NAME                                READY     STATUS    RESTARTS   AGE
+msur-argocd-server-c6d4ffcf-9z4c2   1/1       Running   0          51s</pre>
+
+<p>Hãy ghi lại tên của Pod ở đâu đó vì đó sẽ là mật khẩu mà chúng ta dùng để đăng nhập. Ví dụ, trong kết quả trên, mật khẩu sẽ là <code>msur-argocd-server-c6d4ffcf-9z4c2</code>. Để truy cập màn hình đăng nhập và sử dụng thông tin xác thực của mình, chúng ta sẽ cần thiết lập một quy tắc port-forward. Đó là vì chúng ta vẫn chưa định nghĩa đúng cách để truy cập cụm Kubernetes từ internet. Nhưng may mắn là <code>kubectl</code> cung cấp <a data-type="indexterm" data-primary="kubectl" data-secondary="request forwarding" id="idm46223567044968"/>một công cụ dựng sẵn tiện lợi để chuyển tiếp request từ máy cục bộ của bạn vào trong cụm. Hãy dùng lệnh sau để khởi chạy nó:</p>
+
+<pre data-type="programlisting">$ kubectl port-forward svc/msur-argocd-server 8443:443 -n "argocd"
+Forwarding from 127.0.0.1:8443 -&gt; 8080
+Forwarding from [::1]:8443 -&gt; 8080</pre>
+
+<p>Bây giờ, bạn sẽ có thể đi tới <em>localhost:8443</em> trên trình duyệt. Gần như chắc chắn bạn sẽ nhận được một cảnh báo cho biết trang web này không đáng tin cậy. Điều đó hoàn toàn ổn và được mong đợi ở thời điểm này. Hãy để trình duyệt biết rằng bạn chấp nhận tiếp tục và sau đó bạn sẽ thấy một màn hình đăng nhập trông giống như trong <a data-type="xref" href="#argocd-login">Hình 10-13</a>.</p>
+
+<figure><div id="argocd-login" class="figure">
+<img src="assets/msur_1013.png" alt="An image of a login screen with a username and password field"/>
+<h6><span class="label">Hình 10-13. </span>Màn hình đăng nhập Argo CD</h6>
+</div></figure>
+
+<p>Nhập <code>admin</code> làm user ID và dùng mật khẩu bạn đã ghi lại trước đó để đăng nhập. Nếu đăng nhập thành công, bạn sẽ thấy một màn hình dashboard. Giờ chúng ta có thể chuyển sang việc tạo một <a data-type="indexterm" data-primary="Argo CD" data-secondary="log in" data-startref="argolog" id="idm46223567037864"/>tham chiếu tới deployment của dịch vụ thông tin chuyến bay.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" class="less_space pagebreak-before" data-pdf-bookmark="Sync and deploy a microservice"><div class="sect3" id="idm46223567036296">
+<h3>Đồng bộ và triển khai một microservice</h3>
+
+<p>Trong Argo CD, một microservice hoặc <a data-type="indexterm" data-primary="Argo CD" data-secondary="deployment, applications and" id="argodeployapp"/><a data-type="indexterm" data-primary="deployment" data-secondary="Argo CD applications" id="deployargoapp"/><a data-type="indexterm" data-primary="syncing microservices" id="syncmicro"/>workload cần được triển khai được gọi là một <em>application</em>. Để triển khai microservice flight-information, chúng ta sẽ cần tạo một “application” mới và cấu hình nó bằng các giá trị tham chiếu đến package Helm trong Git repository mà chúng ta đã tạo trước đó.</p>
+
+<p>Hãy bắt đầu bằng cách nhấp nút Create Application hoặc New App trên màn hình dashboard. Khi nhấp vào, một biểu mẫu web sẽ trượt ra từ phía bên phải màn hình và bạn sẽ cần điền thông tin vào đó. Đây là nơi bạn định nghĩa metadata cho application và vị trí của package Helm. Trong trường hợp của chúng ta, ta muốn Argo CD lấy package đó từ deployment monorepo và thư mục ms-flights bên trong nó.</p>
+
+<p>Hãy dùng các giá trị trong <a data-type="xref" href="#argo-deployment-values">Bảng 10-4</a> để thiết lập deployment cho microservice flight-information. Hãy chắc chắn bạn thay giá trị <code>YOUR_DEPLOYMENTS_REPOSITORY_URL</code> bằng URL của repository triển khai từ mục <a data-type="xref" href="#create-deployment-repository">“Tạo Repository Triển khai Microservice”</a> để Argo CD có thể truy cập các package Helm của bạn.</p>
+<table id="argo-deployment-values">
+<caption><span class="label">Bảng 10-4. </span>Giá trị cho dịch vụ flight-information</caption>
+<thead>
+<tr>
+<th>Phần</th>
+<th>Khóa</th>
+<th>Giá trị</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p>GENERAL</p></td>
+<td><p>Application name</p></td>
+<td><p><code>flight-info</code></p></td>
+</tr>
+<tr>
+<td><p>GENERAL</p></td>
+<td><p>Project</p></td>
+<td><p><code>default</code></p></td>
+</tr>
+<tr>
+<td><p>GENERAL</p></td>
+<td><p>Sync policy</p></td>
+<td><p><code>manual</code></p></td>
+</tr>
+<tr>
+<td><p>SOURCE</p></td>
+<td><p>Repository URL</p></td>
+<td><p><code>YOUR_DEPLOYMENTS_REPOSITORY_URL</code></p></td>
+</tr>
+<tr>
+<td><p>SOURCE</p></td>
+<td><p>Path</p></td>
+<td><p><code>ms-flights</code></p></td>
+</tr>
+<tr>
+<td><p>DESTINATION</p></td>
+<td><p>Cluster</p></td>
+<td><p><code>in-cluster</code> (<a href="https://kubernetes.default.svc"><em class="hyperlink">https://kubernetes.default.svc</em></a>)</p></td>
+</tr>
+<tr>
+<td><p>DESTINATION</p></td>
+<td><p>Namespace</p></td>
+<td><p><code>microservices</code></p></td>
+</tr>
+</tbody>
+</table>
+
+<p>Khi đã điền xong biểu mẫu, hãy nhấp nút Create.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nếu bạn gặp rắc rối, hãy tham khảo <a href="https://oreil.ly/kZZJP">tài liệu Argo CD</a> để biết hướng dẫn cách thiết lập một 
+<span class="keep-together">application.</span></p>
+</div>
+
+<p>Nếu bạn đã tạo application thành công, Argo CD sẽ liệt kê application flight-info trên dashboard, như minh họa trong <a data-type="xref" href="#argo-flight-out-sync">Hình 10-14</a>.</p>
+
+<figure><div id="argo-flight-out-sync" class="figure">
+<img src="assets/msur_1014.png" alt="The flight service application created"/>
+<h6><span class="label">Hình 10-14. </span>Đã tạo application flight-information</h6>
+</div></figure>
+
+<p>Tuy nhiên, mặc dù application đã được tạo, nó vẫn chưa được đồng bộ với khai báo <code>Deployment</code>, và application flight-info trong cụm của chúng ta chưa khớp với mô tả trong package. Đó là vì Argo CD vẫn chưa thực sự thực hiện Deployment. Để làm điều đó, hãy nhấp vào application flight-info mà chúng ta vừa tạo, nhấp nút Sync, rồi nhấp nút Synchronize trong cửa sổ trượt ra, như minh họa trong <a data-type="xref" href="#argo-flight-synchronize">Hình 10-15</a>.</p>
+
+<figure><div id="argo-flight-synchronize" class="figure">
+<img src="assets/msur_1015.png" alt="Synchronize the flight service application"/>
+<h6><span class="label">Hình 10-15. </span>Đồng bộ application flight-information</h6>
+</div></figure>
+
+<p>Khi bạn nhấp Synchronize, Argo CD sẽ thực hiện các công việc cần thiết để đưa application của bạn về đúng trạng thái đã mô tả trong package Helm. Nếu mọi thứ diễn ra suôn sẻ, bạn sẽ có một microservice khỏe mạnh, đã được đồng bộ và đã được triển khai, như minh họa trong <a data-type="xref" href="#argo-flight-deploy">Hình 10-16</a>.</p>
+
+<figure><div id="argo-flight-deploy" class="figure">
+<img src="assets/msur_1016.png" alt="The flight service deployment synchronized"/>
+<h6><span class="label">Hình 10-16. </span>Dịch vụ flights đã được triển khai</h6>
+</div></figure>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Nếu trạng thái triển khai của bạn không phải là “healthy,” hãy thử nhấp vào pod (nút cuối cùng ở ngoài cùng bên phải của cây). Bạn sẽ có thể xem các sự kiện và thông điệp log có thể giúp mình khắc phục sự cố.</p>
+</div>
+
+<p>Container của chúng ta đã được triển khai trong cụm Kubernetes, các kiểm tra health check và liveness check đã vượt qua, và nó đã sẵn sàng nhận request. Đây là một cột mốc rất lớn!</p>
+
+<p>Bây giờ, hãy thử kiểm thử dịch vụ flights <a data-type="indexterm" data-primary="Argo CD" data-secondary="deployment, applications and" data-startref="argodeployapp" id="idm46223566988328"/><a data-type="indexterm" data-primary="deployment" data-secondary="Argo CD applications" data-startref="deployargoapp" id="idm46223566987016"/><a data-type="indexterm" data-primary="syncing microservices" data-startref="syncmicro" id="idm46223566985800"/>bằng một request đơn giản.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Test the flights service"><div class="sect3" id="testing-the-service">
+<h3>Kiểm thử dịch vụ flights</h3>
+
+<p>Microservice flights của chúng ta <a data-type="indexterm" data-primary="flights microservice" data-secondary="testing" id="flighttest"/><a data-type="indexterm" data-primary="testing" data-secondary="flight microservice" id="testflight"/>hiện đã hoạt động trong môi trường staging được lưu trữ trên AWS. Để kiểm thử service bằng một request, chúng ta sẽ cần truy cập load balancer của Traefik, nơi sẽ định tuyến request của chúng ta đến service chạy trong container. Điều đầu tiên chúng ta cần là địa chỉ mạng của load balancer. Vì chúng ta chưa thiết lập bản ghi DNS, AWS sẽ tự động cấp cho chúng ta một địa chỉ ngẫu nhiên. Để lấy địa chỉ đó, hãy chạy lệnh <code>kubectl</code> sau:</p>
+
+<pre data-type="programlisting">$ kubectl get svc ms-traefik-ingress</pre>
+
+<p>Bạn sẽ nhận được một kết quả trông như sau:</p>
+
+<pre data-type="programlisting">NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP
+ms-traefik-ingress   LoadBalancer   172.20.149.191   ab.elb.amazonaws.com</pre>
+
+<p><code>EXTERNAL-IP</code> là địa chỉ của <a data-type="indexterm" data-primary="Traefik" id="idm46223566924216"/><a data-type="indexterm" data-primary="load balancing" data-secondary="Traefik" id="idm46223566923608"/>load balancer Traefik. Hãy ghi lại nó cho request kiểm thử của chúng ta.</p>
+
+<p>Chúng ta sẽ dùng curl để gửi một request đến microservice flights. Nếu bạn chưa có bản cài curl trên máy, bạn có thể lấy nó từ <a href="https://oreil.ly/xtfjJ">trang này</a>. Nếu bạn chưa từng dùng trước đây, curl là một công cụ dòng lệnh mạnh mẽ để gửi message tới các địa chỉ dựa trên URL. Chúng ta dùng curl vì nó có nhiều tùy chọn hữu ích, bao gồm khả năng đặt host header trong HTTP request. Điều đó rất hữu ích với chúng ta vì cần đặt host là <em>flightsvc.com</em> để quy tắc định tuyến ingress hoạt động.</p>
+
+<p>Hãy chạy lệnh curl sau để gửi một request kiểm thử tới dịch vụ flights (thay <em><code>{TRAEFIK-EXTERNAL-IP}</code></em> bằng địa chỉ của load balancer):</p>
+<pre data-type="programlisting">
+curl --header "Host: flightsvc.com" \
+ <em>{TRAEFIK-EXTERNAL-IP}</em>/flights?flight_no=AA2532
+</pre>
+
+<p>Nếu mọi thứ diễn ra đúng như mong đợi, bạn sẽ nhận được thông tin chi tiết của chuyến bay đó dưới dạng phản hồi JSON.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Bạn có thể dùng một công cụ kiểm thử API chuyên dụng như Postman hoặc SoapUI để nhận được phiên bản phản hồi được định dạng thân thiện hơn với người dùng.</p>
+</div>
+
+<p>HTTP request mà chúng ta vừa gửi sẽ gọi tới ingress service, rồi từ đó được định tuyến đến microservice flights dựa trên quy tắc ingress mà chúng ta đã định nghĩa trước đó trong chương này. Microservice flights lấy dữ liệu từ dịch vụ cơ sở dữ liệu mà chúng ta đã cấp phát và trả kết quả cho chúng ta thông qua load balancer. Với request đó, chúng ta đã có thể kết nối tất cả các phần trong kiến trúc triển khai của mình và kiểm thử một kiến trúc microservice đầu-cuối!</p>
+
+<p>Việc còn lại chỉ là dọn dẹp, để chúng ta không phải trả tiền cho những tài nguyên AWS không sử dụng.</p>
+<div data-type="warning" epub:type="warning"><h6>Cảnh báo</h6>
+<p>AWS vẫn tính phí các tài nguyên EKS ngay cả khi chúng không xử lý lưu lượng, vì vậy hãy chắc chắn rằng bạn gỡ bỏ <a data-type="indexterm" data-primary="flights microservice" data-secondary="testing" data-startref="flighttest" id="idm46223566913928"/><a data-type="indexterm" data-primary="testing" data-secondary="flight microservice" data-startref="testflight" id="idm46223566912680"/>hạ tầng của mình nếu không còn sử dụng nữa.</p>
+</div>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Clean Up"><div class="sect1" id="idm46223567062008">
+<h1>Dọn dẹp</h1>
+
+<p>Như những lần trước, chúng ta sẽ dùng Terraform client cục bộ để hạ hạ tầng xuống. Hãy chắc chắn rằng bạn đang ở trong thư mục chứa các tệp Terraform staging và chạy lệnh sau:</p>
+
+<pre data-type="programlisting">infra-staging-env $ terraform destroy</pre>
+
+<p>Khi lệnh hoàn tất thành công, môi trường staging dựa trên Kubernetes của chúng ta sẽ bị hủy. Bạn có thể kiểm tra để chắc chắn rằng các tài nguyên đã được xóa bằng AWS CLI hoặc bảng điều khiển AWS trên trình duyệt. Chúng tôi đã đưa ra một vài ví dụ về các lệnh CLI mà bạn có thể chạy trong <a data-type="xref" href="ch06.html#ch-infrastructure-pipeline">Chương 6</a>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" class="less_space pagebreak-before" data-pdf-bookmark="Summary"><div class="sect1" id="idm46223566907528">
+<h1>Tóm tắt</h1>
+
+<p>Ngay từ đầu chương, chúng tôi đã cảnh báo rằng chúng ta sẽ phải làm khá nhiều việc. Tất cả công sức đó đã được đền đáp khi cuối cùng chúng ta hoàn thành việc triển khai đầu-cuối cho kiến trúc microservice mà mình đã xây dựng xuyên suốt cuốn sách. Chúng ta cũng có cơ hội tái sử dụng một số công cụ và thực hành đã thiết lập trước đó để hoàn thành được nhiều việc hơn trong ít thời gian hơn.</p>
+
+<p>Trong chương này, chúng ta đã cập nhật template hạ tầng để hỗ trợ các phụ thuộc đến từ các nhóm microservice. Chúng ta đã triển khai một pipeline build và tích hợp trong các repository mã nguồn microservice, đồng thời xây dựng một repository triển khai mới và một quy trình dựa trên công cụ để đưa service vào triển khai.</p>
+
+<p>Hy vọng rằng bạn đã thấy được cách những quyết định mà chúng ta đưa ra ở thời điểm triển khai chịu ảnh hưởng mạnh mẽ từ các quyết định trước đó về nguyên tắc, mô hình vận hành, hạ tầng và thiết kế. Tất cả chúng đã kết hợp với nhau để tạo thành một trạng thái cuối cho phép chúng ta xây dựng một hiện thực chạy được.</p>
+
+<p>Nhưng phép thử thực sự của một hệ thống microservice là cách nó xử lý thay đổi. Đó là điều chúng ta sẽ đề cập trong chương tiếp theo.</p>
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>

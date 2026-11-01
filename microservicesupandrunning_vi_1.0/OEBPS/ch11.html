@@ -1,0 +1,764 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Quản lý Thay đổi</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 11. Managing Change"><div class="chapter" id="ch-managing-change">
+<h1><span class="label">Chương 11. </span>Quản lý Thay đổi</h1>
+
+
+<p>Giờ đây, chúng ta đã xây dựng một hệ thống microservices <a data-type="indexterm" data-primary="change" id="idm46223566901640"/>được tối ưu để giảm chi phí thay đổi. Chúng ta đã làm điều đó khá nhanh và với rất nhiều công cụ, công nghệ, cũng như repository khác nhau. Trong chương này, chúng ta sẽ lùi lại một bước và xem xét hệ thống mình đã xây dựng từ góc độ thay đổi. Chúng ta sẽ khám phá thay đổi trông như thế nào đối với hệ thống đó. Chúng ta cũng sẽ xem xét những kiểu thay đổi điển hình mà bạn sẽ cần thực hiện, cùng các mẫu và phương pháp phù hợp để hỗ trợ chúng.</p>
+
+<p>Thay đổi là một yếu tố quan trọng vì những tác động mà nó mang lại. Phần mềm được thiết kế kém có thể khiến tổ chức phải chịu rất nhiều đau đớn. Như chúng ta đã nhấn mạnh trong <a data-type="xref" href="ch01.html#ch-towards-a-microservices-architecture">Chương 1</a>, một trong những lợi ích của hệ thống microservices là giúp việc thay đổi diễn ra nhanh hơn và an toàn hơn.</p>
+
+<p>Ngoài ra, thay đổi luôn đi kèm chi phí. Trong một hệ thống phần mềm, chi phí đó là sự kết hợp của thời gian, tiền bạc và tác động tới con người. Để khai thác tối đa hệ thống microservices của mình, chúng ta cần giảm thiểu chi phí thay đổi và thực hiện những thay đổi tạo ra tác động lớn nhất. Giảm chi phí thay đổi mang lại cho tất cả các nhóm của chúng ta nhiều tự do hơn để thử nghiệm, tối ưu và cải tiến. Tập trung vào các hoạt động thay đổi giúp chúng ta thu được kết quả tốt hơn từ một ngân sách thay đổi hữu hạn.</p>
+
+<p>Hãy bắt đầu bằng cách hiểu rõ hơn về những kiểu thay đổi mà chúng ta có thể kỳ vọng trong một hệ thống microservices và cách tốt nhất để đưa ra quyết định về thay đổi.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Changes in a Microservices System"><div class="sect1" id="idm46223566897192">
+<h1>Những Thay đổi trong Hệ thống Microservices</h1>
+
+<p>Trong một hệ thống microservices, thay đổi <a data-type="indexterm" data-primary="change" data-secondary="as feature" id="idm46223566895672"/>nên là một tính năng, chứ không phải một vấn đề hay một lỗi. Điều đó có nghĩa là bạn phải có khả năng thay đổi hệ thống để làm cho nó tốt hơn và khai thác được nhiều giá trị hơn từ phần mềm mình đã xây dựng. Khi nghĩ về thay đổi phần mềm, mọi người thường nghĩ tới các tác nhân bên ngoài, tức những yếu tố đến từ nhu cầu kinh doanh hoặc đầu vào của người dùng. Ví dụ, sau đây là một vài lý do phổ biến để thực hiện <a data-type="indexterm" data-primary="change" data-secondary="reasons for" id="idm46223566894200"/>thay đổi trong hệ thống của bạn:</p>
+
+<ul>
+<li>
+<p>Hỗ trợ ra mắt một sản phẩm mới</p>
+</li>
+<li>
+<p>Khắc phục một lỗi logic đang làm suy giảm trải nghiệm người dùng</p>
+</li>
+<li>
+<p>Tích hợp với một đối tác mới</p>
+</li>
+</ul>
+
+<p>Đây đều là những lý do quan trọng để thay đổi, và kiến trúc của chúng ta nên hỗ trợ những kiểu thay đổi này để chúng có chi phí hiệu quả nhất có thể. Nhưng điều quan trọng là phải hiểu rằng phong cách microservices là một kỹ thuật tối ưu hóa. Điều đó có nghĩa là chúng ta cũng cần xem xét cả các tác nhân nội tại. Những thay đổi sau đây xuất phát từ việc chúng ta quan sát chính hệ thống:</p>
+
+<ul>
+<li>
+<p>Tách một microservice để giảm độ phức tạp của mã nguồn</p>
+</li>
+<li>
+<p>Triển khai lại hạ tầng để tránh bị lệch khỏi mã hạ tầng</p>
+</li>
+<li>
+<p>Tối ưu pipeline CI/CD để phân phối thay đổi nhanh hơn</p>
+</li>
+</ul>
+
+<p>Không còn nghi ngờ gì nữa, bạn sẽ cần hỗ trợ các thay đổi đến từ bên ngoài. Nhưng để khai thác được nhiều giá trị nhất từ hệ thống của mình, bạn cũng cần lập kế hoạch và thực thi các thay đổi nội tại. Một cách tốt để nuôi dưỡng tư duy cải tiến liên tục này là dùng dữ liệu và các phép đo để định hướng quyết định của bạn.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Be Data-Oriented"><div class="sect2" id="idm46223566885160">
+<h2>Lấy Dữ liệu làm Định hướng</h2>
+
+<p>Một vấn đề kinh điển trong phát triển <a data-type="indexterm" data-primary="change" data-secondary="data" id="chandata"/><a data-type="indexterm" data-primary="change" data-secondary="measurements and" id="chanmea"/>phần mềm là thiết kế quá mức và tối ưu hóa quá sớm. Điều này xảy ra khi chúng ta thiết kế phần mềm hoặc kiến trúc để giải quyết một vấn đề gần như chẳng bao giờ xảy ra. Hoặc khi giải pháp cho một vấn đề được dự đoán trước của chúng ta lại tốn kém hơn rất nhiều so với chính vấn đề đó.</p>
+
+<p>Điều này cũng có thể là một mối nguy đối với hệ thống microservices. Đó là lý do bạn nên dùng dữ liệu và các phép đo để định hướng quyết định về thời điểm cần thực hiện thay đổi, đặc biệt là các thay đổi cải tiến mang tính nội tại. Nếu không có dữ liệu, bạn sẽ chỉ đang phỏng đoán và rất có thể sẽ làm việc rất vất vả để cải thiện những phần của hệ thống vốn không hề cần trợ giúp. Trong khi đó, các khu vực vấn đề cấp bách khác có thể vẫn không bị phát hiện. Với nguồn lực hữu hạn, bạn không thể làm việc theo cách đó.</p>
+
+<p>Các nhóm sản phẩm dùng dữ liệu để đưa ra quyết định sáng suốt hơn về những thay đổi họ muốn thực hiện. Doanh nghiệp sử dụng objective and key results (OKR), key performance indicators (KPI), net promoter scores, khảo sát mức độ hài lòng và số liệu doanh thu để định hình quyết định chiến lược và backlog thay đổi của họ.</p>
+
+<p>Bạn cũng sẽ cần một thứ tương tự để định hướng kế hoạch cải tiến và tối ưu của mình. Ví dụ, hãy cân nhắc thu thập các metric về dự án, thiết kế và runtime sau đây để hiểu rõ hơn về những cơ hội cải tiến:</p>
+
+<ul class="less_space pagebreak-before">
+<li>
+<p>Thời gian thay đổi trên mỗi microservice</p>
+</li>
+<li>
+<p>Tần suất thay đổi trên mỗi microservice</p>
+</li>
+<li>
+<p>Số lượng microservice bị thay đổi trong mỗi yêu cầu thay đổi</p>
+</li>
+<li>
+<p>Số dòng mã trong một microservice (như một điểm dữ liệu, chứ không phải một ràng buộc!)</p>
+</li>
+<li>
+<p>Độ trễ runtime của từng microservice</p>
+</li>
+<li>
+<p>Các phụ thuộc giữa các microservice</p>
+</li>
+</ul>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Chúng ta đã không triển khai khả năng quan sát hay báo cáo trong kiến trúc microservices của mình. Đó là vì chúng ta có không gian hạn chế và muốn tập trung vào một số thành phần nền tảng hơn. Nhưng tin tốt là mọi điểm móc cần thiết đều đã có sẵn để bạn mở rộng hệ thống và cung cấp cho mình một số metric mà chúng ta vừa mô tả.</p>
+</div>
+
+<p>Nhìn một cách tổng thể, những metric phân tích kiểu này có thể mang lại cho bạn một bức tranh đầy đủ hơn về nơi cần cải tiến. Từ đó, bạn có thể quyết định nên dồn nỗ lực vào đâu cho hợp lý nhất. Tất nhiên, bạn cũng sẽ cần cân bằng những cải tiến có thể thực hiện với <a data-type="indexterm" data-primary="change" data-secondary="data" data-startref="chandata" id="idm46223566869960"/><a data-type="indexterm" data-primary="change" data-secondary="measurements and" data-startref="chanmea" id="idm46223566868712"/>tác động mà một thay đổi sẽ gây ra.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="The Impact of Changes"><div class="sect2" id="idm46223566867240">
+<h2>Tác động của Thay đổi</h2>
+
+<p>Có rất nhiều tác động tiềm tàng phát sinh từ thay đổi phần mềm, nhưng có bốn loại đặc biệt dường như gây ra nhiều xung đột nhất cho các tổ chức hiện đại: thời gian thực hiện, thời gian phối hợp, downtime và tác động tới bên tiêu thụ. Khi xem xét chi phí thay đổi trong một hệ thống microservices, bạn nên cân nhắc các trọng điểm này. Hãy cùng điểm qua từng yếu tố:</p>
+<dl>
+<dt>Thời gian thực hiện</dt>
+<dd>
+<p>Một phần cốt lõi của chi phí <a data-type="indexterm" data-primary="change" data-secondary="implementation time and" id="idm46223566863864"/>thay đổi là khoảng thời gian thực sự cần để thực hiện thay đổi. Điều này bao gồm thời gian cần để hiểu trạng thái hiện tại, thực hiện thay đổi mong muốn, kiểm thử thay đổi và cập nhật môi trường production. Một yếu tố lớn của thời gian thực hiện là mức độ dễ đọc, dễ học và dễ bảo trì của các thành phần cần thay đổi.</p>
+</dd>
+<dt>Thời gian phối hợp</dt>
+<dd>
+<p>Để thực hiện một thay đổi, <a data-type="indexterm" data-primary="change" data-secondary="coordination time and" id="idm46223566861096"/>gần như luôn sẽ có một số hình thức giao tiếp nào đó giữa các nhóm. Thời gian phối hợp là một tập con của thời gian thực hiện, nhưng rất đáng để tách riêng nó ra. Thực tế, nó quan trọng đến mức chúng ta đã nhắc tới nó vài lần trong cuốn sách này. Thời gian phối hợp có thể bao gồm thời gian dành cho việc xin quyền truy cập tài nguyên, xin phép và đạt được đồng thuận về các hoạt động thay đổi, cũng như “ma sát tổ chức” nói chung phát sinh từ việc 
+<span class="keep-together">làm việc</span> trong một tổ chức lớn. Thời gian phối hợp thường là hệ quả của thiết kế và cấu trúc tổ chức.</p>
+</dd>
+<dt>Downtime</dt>
+<dd>
+<p>Downtime là thước đo <a data-type="indexterm" data-primary="change" data-secondary="downtime and" id="idm46223566857400"/>khoảng thời gian mà hệ thống hoặc một thành phần của hệ thống không khả dụng trong lúc thay đổi đang được triển khai. Nhiều năm trước, downtime được xem là một phần chấp nhận được của quy trình thay đổi phần mềm. Nhưng thời thế và kỳ vọng đã thay đổi. Giờ đây, áp lực đối với các nhóm công nghệ trong việc giảm thiểu downtime cần thiết cho thay đổi ngày càng lớn. Trên thực tế, trong một hệ thống microservices, việc theo đuổi mô hình thay đổi “zero-downtime”, trong đó hệ thống luôn sẵn sàng, là điều khá phổ biến.</p>
+</dd>
+<dt>Tác động tới bên tiêu thụ</dt>
+<dd>
+<p>Một tác động thường bị quên lãng là <a data-type="indexterm" data-primary="change" data-secondary="consumer impact" id="idm46223566854488"/>chi phí mà một thay đổi gây ra cho người dùng của hệ thống. Downtime phản ánh một dạng tác động tới bên tiêu thụ, nhưng ngay cả trong mô hình “zero-downtime” vẫn có thể tồn tại những tác động tốn kém đáng lẽ đã có thể tránh được. Ví dụ, một thay đổi ở module hạ tầng có thể gây ảnh hưởng rộng tới các nhóm phát triển microservice. Tương tự, một thay đổi ở giao diện có thể làm hỏng mã của mọi thành phần đang sử dụng nó.</p>
+</dd>
+</dl>
+
+<p>Kiến trúc phần mềm có vai trò rất <a data-type="indexterm" data-primary="change" data-secondary="architecture and" id="idm46223566852456"/><a data-type="indexterm" data-primary="architecture" data-secondary="change and" id="idm46223566851480"/>lớn đối với chi phí và tác động của thay đổi trên cả bốn lăng kính mà chúng ta vừa mô tả. Nhưng còn một phần khác của câu chuyện là cách mà thay đổi được áp dụng. Kiến trúc microservices, hạ tầng đám mây và các thực hành DevOps đã mở đường cho những cách làm là một bước tiến rất lớn. Hãy cùng xem hai mẫu triển khai hiện đại cùng với một mẫu cũ hơn nhưng vẫn tồn tại đến ngày nay.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Three Deployment Patterns"><div class="sect2" id="idm46223566849736">
+<h2>Ba Mẫu Triển khai</h2>
+
+<p>Có rất nhiều cách khác nhau để <a data-type="indexterm" data-primary="change" data-secondary="deployment patterns" id="idm46223566848200"/><a data-type="indexterm" data-primary="deployment" data-secondary="change and" id="deploychange"/>áp dụng thay đổi và triển khai các thành phần phần mềm. Trước khi đi sâu vào khả năng thay đổi của kiến trúc mà chúng ta đã xây dựng, rất đáng để xem lại ba mẫu triển khai mà chúng ta sẽ dùng khi thực hiện thay đổi trong hệ thống của mình: blue-green, canary và nhiều phiên bản. Trước hết, hãy xem xét 
+<span class="keep-together">triển khai blue-green.</span></p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Blue-green deployment"><div class="sect3" id="blue-green">
+<h3>Triển khai Blue-Green</h3>
+
+<p>Trong một đợt triển khai <a href="https://oreil.ly/zj7g-">blue-green</a>, có hai <a data-type="indexterm" data-primary="change" data-secondary="deployment patterns" data-tertiary="blue-green deployment" id="idm46223566842360"/><a data-type="indexterm" data-primary="deployment" data-secondary="blue-green deployment" id="idm46223566841112"/><a data-type="indexterm" data-primary="blue-green deployment" id="idm46223566840168"/>môi trường song song được duy trì. Một môi trường đang live và nhận lưu lượng, còn môi trường kia ở trạng thái nhàn rỗi. Thay đổi được áp dụng lên môi trường nhàn rỗi và khi đã sẵn sàng, lưu lượng sẽ được định tuyến sang môi trường đã thay đổi. Lúc này, hai môi trường đổi vai cho nhau: môi trường nhàn rỗi trở thành live, còn môi trường live trở thành nhàn rỗi để sẵn sàng cho thay đổi kế tiếp.</p>
+
+<p>Đây là một mẫu triển khai hữu ích vì nó cho phép bạn thực hiện thay đổi trong môi trường production một cách an toàn. Việc chuyển lưu lượng sang môi trường mới đồng nghĩa bạn không phải lo lặp lại thay đổi trên một hệ thống đang hoạt động trực tiếp. Màu sắc thực tế của các môi trường không quan trọng; điểm mấu chốt của mẫu này là hai môi trường thay phiên nhau đóng vai live và nhàn rỗi.</p>
+
+<p>Một lợi ích của mẫu này là nó có thể giảm downtime rất mạnh, thậm chí xuống tới mô hình zero-downtime. Tuy nhiên, việc duy trì hai môi trường đòi hỏi phải xử lý cẩn thận các hệ thống lưu trữ bền vững như cơ sở dữ liệu. Dữ liệu bền vững và luôn thay đổi cần được đồng bộ, sao chép hoặc được duy trì hoàn toàn bên ngoài mô hình blue-green.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Canary deployment"><div class="sect3" id="canary-deployment">
+<h3>Triển khai Canary</h3>
+
+<p>Một <a href="https://oreil.ly/QXtSZ">triển khai canary</a> tương tự như triển khai blue-green <a data-type="indexterm" data-primary="change" data-secondary="deployment patterns" data-tertiary="canary deployment" id="idm46223566834888"/><a data-type="indexterm" data-primary="deployment" data-secondary="canary deployment" id="idm46223566833640"/><a data-type="indexterm" data-primary="canary deployment" id="idm46223566832696"/>, nhưng thay vì duy trì hai môi trường hoàn chỉnh, bạn phát hành song song hai thành phần. “Canary” trong mẫu này là phiên bản đóng vai trò như một <a href="https://oreil.ly/hr1Vk">“chim hoàng yến trong mỏ than”</a>, cảnh báo nguy hiểm từ sớm. Ví dụ, để thực hiện triển khai canary cho một ứng dụng web, bạn sẽ phát hành một phiên bản canary mới của ứng dụng web bên cạnh ứng dụng web gốc vẫn tiếp tục chạy.</p>
+
+<p>Giống như mẫu blue-green, triển khai canary đòi hỏi cơ chế quản lý và định tuyến lưu lượng mới có thể hoạt động. Sau khi triển khai phiên bản mới của ứng dụng, một phần lưu lượng sẽ được định tuyến tới phiên bản mới đó. Lưu lượng đi vào phiên bản canary có thể là một tỷ lệ phần trăm của tổng tải, hoặc có thể dựa trên một header riêng hay một mã định danh đặc biệt. Dù thực hiện theo cách nào, theo thời gian sẽ có ngày càng nhiều lưu lượng được định tuyến tới phiên bản canary cho đến khi cuối cùng nó được nâng lên thành trạng thái production đầy đủ.</p>
+
+<p>Mặc dù mẫu canary tương tự blue-green, nó có thêm lợi thế là tinh vi hơn ở mức chi tiết. Thay vì duy trì toàn bộ một môi trường sao chép, chúng ta có thể tập trung vào một thay đổi nhỏ hơn, có ranh giới rõ ràng và thực hiện thay đổi đó ngay trong một hệ thống đang chạy. Điều này có thể gây ra vấn đề nếu canary mà chúng ta triển khai tác động tới các phần khác của hệ thống. Ví dụ, nếu triển khai canary của chúng ta thay đổi một tài nguyên dùng chung của hệ thống theo cách mới, thì ngay cả khi chỉ xử lý 1% lưu lượng, nó vẫn có thể gây ra hậu quả thảm khốc.</p>
+
+<p>Nhưng trong một hệ thống được thiết kế để triển khai độc lập, mẫu canary có thể hoạt động rất tốt. Khi thay đổi được thực hiện trên các thành phần có ranh giới tốt và sở hữu tài nguyên riêng, phạm vi ảnh hưởng của sự cố sẽ bị giới hạn. Vì vậy, đây là một mẫu rất hữu ích trong bộ công cụ của bạn nếu bạn đang làm việc với đúng loại kiến trúc. Như chúng ta sẽ thấy, mẫu canary hóa ra rất phù hợp với kiến trúc microservices mà chúng ta đã xây dựng trong cuốn sách này.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Multiple versions"><div class="sect3" id="multiple-versions">
+<h3>Nhiều Phiên bản</h3>
+
+<p>Mẫu cuối cùng cần đề cập là <a data-type="indexterm" data-primary="change" data-secondary="deployment patterns" data-tertiary="multiple-versions" id="idm46223566826008"/><a data-type="indexterm" data-primary="deployment" data-secondary="multiple-versions" id="idm46223566824760"/>một mẫu xem người dùng và client như một phần của quy trình thay đổi: chạy song song nhiều phiên bản. Hai mẫu triển khai blue-green và canary mà chúng ta vừa đề cập đều dùng cơ chế tạm thời <a data-type="indexterm" data-primary="change" data-secondary="deployment patterns" data-tertiary="expand and contract" id="idm46223566823464"/><a data-type="indexterm" data-primary="deployment" data-secondary="expand and contract pattern" id="idm46223566822248"/><a data-type="indexterm" data-primary="expand-and-contract pattern" id="idm46223566821288"/>chạy song song các instance (đôi khi được gọi là mẫu <em>mở rộng rồi thu hẹp</em>). Nhưng trong cả hai trường hợp đó, bạn thường sẽ chạy riêng các instance mới và cũ, không chia sẻ chi tiết của chức năng mới cho đến khi nó an toàn để sử dụng. Quyết định định tuyến mang tính <em>ẩn</em> và bị che giấu khỏi người dùng của hệ thống.</p>
+
+<p>Mẫu nhiều phiên bản làm cho thay đổi minh bạch hơn đối với người dùng và client của hệ thống. Trong mẫu triển khai này, chúng ta <em>rõ ràng</em> gắn phiên bản cho một thành phần hoặc giao diện và cho phép client chọn phiên bản thành phần mà họ muốn dùng. Theo cách đó, chúng ta có thể hỗ trợ sử dụng đồng thời nhiều phiên bản.</p>
+
+<p>Lý do chính để áp dụng kỹ thuật này là khi chúng ta thực hiện một thay đổi mà hệ thống phụ thuộc cũng sẽ phải thay đổi theo. Chúng ta dùng mẫu này khi biết rằng những người mà mình không trực tiếp phối hợp sẽ cần làm việc để hoàn tất thay đổi. Một ví dụ kinh điển của tình huống này là khi bạn muốn thay đổi một API theo cách sẽ làm hỏng mã client. Trong kịch bản đó, việc quản lý quá trình chuyển đổi cho tất cả các bên sẽ đòi hỏi chi phí phối hợp rất lớn. Thay vào đó, chúng ta có thể giữ các phiên bản cũ tiếp tục chạy để không phải chờ mọi client thay đổi xong.</p>
+
+<p>Có một số thách thức đáng kể khi dùng cách tiếp cận này. Mỗi phiên bản của một thành phần mà chúng ta đưa vào đều kéo theo thêm chi phí bảo trì và độ phức tạp cho hệ thống. Các phiên bản phải có khả năng chạy an toàn cùng nhau, và các phiên bản song song phải liên tục được bảo trì, hỗ trợ, tài liệu hóa và giữ an toàn. Phần chi phí phụ trội đó có thể trở thành một cơn đau đầu trong vận hành và làm chậm khả năng thay đổi của hệ thống theo thời gian. Cuối cùng, bạn sẽ cần di chuyển người dùng khỏi các phiên bản cũ và thực hiện bước co hẹp các phiên bản.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Có những hệ thống gần như không bao giờ thu hẹp số phiên bản của mình. Ví dụ, tại thời điểm viết cuốn sách này, API SaaS của Salesforce đang ở phiên bản 49 và hỗ trợ song song 19 phiên bản trước đó!</p>
+</div>
+
+<p>Giờ đây, chúng ta đã có một khung tương đối vững để đánh giá tác động của thay đổi và một tập hợp các mẫu triển khai điển hình mà chúng ta có thể dùng để mô tả cách thay đổi có thể được xử lý. Bây giờ, chúng ta có thể đi sâu vào việc đánh giá kiến trúc mình đã xây dựng từ góc độ thay đổi trên các khía cạnh hạ tầng, microservices và dữ liệu. Chúng ta sẽ bắt đầu bằng cách xem xét khả năng thay đổi của <a data-type="indexterm" data-primary="deployment" data-secondary="change and" data-startref="deploychange" id="idm46223566814280"/>nền tảng hạ tầng của mình.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Considerations for Our Architecture"><div class="sect1" id="idm46223566812776">
+<h1>Các Cân nhắc đối với Kiến trúc của Chúng ta</h1>
+
+<p>Nếu bạn đã làm theo các hướng dẫn trong cuốn sách này, bạn sẽ xây dựng được một kiến trúc microservices khá tiên tiến trong một khoảng thời gian tương đối ngắn. Tốc độ kỹ nghệ đó là minh chứng cho những công cụ, dịch vụ và phần mềm đáng kinh ngạc mà chúng ta có thể sử dụng. Nhưng xây dựng thứ gì đó thật nhanh sẽ không có ý nghĩa nếu nó không làm được công việc mà nó phải làm. Với chúng ta, điều đó có nghĩa là kiến trúc mình đã xây dựng phải đứng vững khi xét tới khả năng thay đổi.</p>
+
+<p>Trong phần này, chúng ta sẽ đi một vòng quanh hệ thống và xem xét kỹ hơn cách những quyết định mình đã đưa ra ảnh hưởng tới khả năng thay đổi của kiến trúc. Chúng ta sẽ nhìn thay đổi qua các yếu tố chi phí thực hiện, thời gian phối hợp, downtime và tác động tới bên tiêu thụ mà mình đã giới thiệu ở phần trước của chương. Để đơn giản hơn, chúng ta sẽ chia kiến trúc thành ba hệ con: hạ tầng, microservices và dữ liệu, rồi xem xét từng phần. Hãy bắt đầu bằng việc xem xét hạ tầng của mình.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Infrastructure Changes"><div class="sect2" id="idm46223566809816">
+<h2>Thay đổi Hạ tầng</h2>
+
+<p>Trong <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, chúng ta <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" id="idm46223566807272"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" id="idm46223566806296"/>đã phát triển một nền tảng dựa trên Terraform cho các microservice của mình, bao gồm mạng, Kubernetes và một công cụ triển khai GitOps. Về sau, chúng ta bổ sung cơ sở dữ liệu MySQL và Redis vào stack dựa trên nhu cầu mới phát sinh của các nhóm microservice. Việc nền tảng hạ tầng tiếp tục thay đổi là điều thực tế hoàn toàn có thể kỳ vọng khi nhu cầu của người dùng và các nhóm tiến hóa, còn mô hình nhu cầu và mục tiêu kinh doanh cũng thay đổi.</p>
+
+<p>Đối với hạ tầng của chúng ta, có thể chia thay đổi thành hai loại: thay đổi mở rộng nền tảng bằng tài nguyên mới và thay đổi điều chỉnh các tài nguyên nền tảng hiện có. Việc tạo tài nguyên mới là một dạng mở rộng ít ảnh hưởng đến hệ thống đang chạy, trong khi các thay đổi lên tài nguyên hiện hữu cần được quản lý cẩn thận hơn.</p>
+
+<p>Ví dụ về việc bổ sung tài nguyên mới cho kiến trúc của chúng ta có thể là:</p>
+
+<ul>
+<li>
+<p>Triển khai một hạ tầng truyền phát sự kiện mới bằng AWS SNS cho các microservice mới đang được phát triển</p>
+</li>
+<li>
+<p>Cấp phát một instance <a data-type="indexterm" data-primary="architecture" data-secondary="ECS (Elastic Container Service)" id="idm46223566800440"/><a data-type="indexterm" data-primary="ECS (Elastic Container Service)" id="idm46223566799416"/>Elastic Container Service (ECS) và một VPC để cài đặt một ứng dụng của bên thứ ba</p>
+</li>
+<li>
+<p>Thêm một tài khoản vận hành mới vào hệ thống IAM</p>
+</li>
+</ul>
+
+<p>Sau đây là một vài ví dụ về thay đổi làm điều chỉnh một tài nguyên hiện có:</p>
+
+<ul>
+<li>
+<p>Thay đổi thiết kế mạng của VPC nơi dịch vụ EKS của chúng ta được triển khai</p>
+</li>
+<li>
+<p>Nâng cấp phiên bản MySQL của instance RDS</p>
+</li>
+<li>
+<p>Sửa đổi cấu hình của cụm Kubernetes</p>
+</li>
+</ul>
+
+<p>Chúng ta sẽ cần cân nhắc cả hai loại thay đổi này khi đánh giá khả năng thay đổi của hạ tầng. Hãy bắt đầu bằng việc xem xét chi phí thực hiện.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" class="less_space pagebreak-before" data-pdf-bookmark="Infrastructure change: Implementation costs"><div class="sect3" id="infra-change-implementation-costs">
+<h3>Thay đổi Hạ tầng: Chi phí Thực hiện</h3>
+
+<p>Chi phí thực hiện của <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="implementation costs" id="idm46223566790728"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="implementation costs" id="idm46223566789480"/><a data-type="indexterm" data-primary="implementation cost" data-secondary="infrastructure cost and" id="idm46223566788264"/>việc thay đổi hạ tầng là hàm của mức độ khó khi vừa hiểu vừa thực thi thay đổi đó. Đây là nơi khoản đầu tư mà chúng ta đã thực hiện vào thiết kế hạ tầng phát huy tác dụng. Các quyết định chấp nhận nguyên tắc hạ tầng bất biến, xây dựng pipeline CI/CD và viết IaC kết hợp lại với nhau để giảm mạnh chi phí thay đổi.</p>
+
+<p>Khi đến lúc bạn cần <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="change process" id="idm46223566786408"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="change process" id="idm46223566785160"/>thực hiện một thay đổi hạ tầng, bạn có thể áp dụng một quy trình thay đổi trông như sau, nhờ vào các công cụ mà chúng ta đã triển khai:</p>
+<ol>
+<li>
+<p>Quyết định thay đổi hạ tầng mà bạn muốn thực hiện.</p>
+</li>
+<li>
+<p>Xác định phần mã hạ tầng mà bạn cần sửa (ví dụ: bạn có cần tạo một module Terraform mới không? Hay chỉ cần cập nhật một định nghĩa môi trường?).</p>
+</li>
+<li>
+<p>Kiểm thử thay đổi hạ tầng trong một môi trường phát triển hạ tầng.</p>
+</li>
+<li>
+<p>Thử triển khai ứng dụng và microservice lên hạ tầng đã được cập nhật.</p>
+</li>
+<li>
+<p>Chạy kiểm thử và phát hành (ví dụ: kiểm thử tích hợp, kiểm thử hiệu năng và kiểm thử end-to-end).</p>
+</li>
+
+</ol>
+
+<p>Bằng cách áp dụng nguyên tắc IaC, khả năng thay đổi trong thiết kế hạ tầng của chúng ta đã được cải thiện đáng kể. Chúng ta chỉ thực hiện thay đổi thông qua pipeline hạ tầng, vì vậy ta biết rằng nếu nó không có trong mã, thì nó không có trong hạ tầng.</p>
+
+<p>Chúng ta dùng cùng các module mã trong mọi môi trường, nên nếu các thay đổi hạ tầng của bạn hoạt động trong môi trường phát triển, thì chúng cũng phải hoạt động trong môi trường production. Cuối cùng, pipeline tự động của chúng ta bảo đảm rằng mã hạ tầng và các bài kiểm thử sẽ được chạy theo cùng một cách, một cách nhất quán và lặp lại được.</p>
+
+<p>Những gì chúng ta đã làm trong hệ thống của mình là loại bỏ sự biến thiên khỏi quy trình thay đổi. Khi có ít bất định hơn để phải lo lắng, chúng ta có thể tập trung nhiều hơn vào chính bản thân thay đổi. Viết IaC đòi hỏi thêm một chút nỗ lực ban đầu, nhưng phần thưởng về sau khi cần thay đổi khiến đó trở thành một khoản đầu tư xứng đáng.</p>
+
+<p>Nhìn chung, chi phí thực hiện thay đổi hạ tầng sẽ thấp hơn với kiến trúc của chúng ta so với trường hợp chỉ trực tiếp thao tác thay đổi qua AWS console.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Infrastructure change: Coordination costs"><div class="sect3" id="idm46223566775512">
+<h3>Thay đổi Hạ tầng: Chi phí Phối hợp</h3>
+
+<p>Khi chúng ta phát triển <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="coordination costs" id="infrachcoord"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="coordination costs" id="chinfracoord"/><a data-type="indexterm" data-primary="coordination cost" data-secondary="infrastructure cost and" id="coordinf"/>mô hình vận hành của mình trong <a data-type="xref" href="ch02.html#ch-designing-ms-op-model">Chương 2</a>, chúng ta đã đưa ra một quyết định quan trọng về cách thực hiện công việc hạ tầng. Chúng ta quyết định rằng một nhóm duy nhất gọi là <a data-type="indexterm" data-primary="teams" data-secondary="platform" id="idm46223566768664"/><a data-type="indexterm" data-primary="platform teams" id="idm46223566767720"/>nhóm platform sẽ chịu trách nhiệm thiết kế, bảo trì và vận hành hạ tầng đám mây của chúng ta. Việc tập trung thiết kế hạ tầng vào nhóm này có nghĩa là chúng ta sẽ phải trả chi phí phối hợp tương đối thấp cho việc ra quyết định. Đó là vì mỗi khi cần thay đổi hạ tầng, chúng ta sẽ không cần phải đạt đồng thuận giữa tất cả các bên trong hệ thống. Thay vào đó, nhóm platform có thẩm quyền và quyền tự chủ độc lập (cũng như trách nhiệm!) đối với các thay đổi hạ tầng.</p>
+
+<p>Trong thực tế, rất khó để cung cấp một nền tảng hạ tầng theo kiểu thuần túy <em>x</em>-as-a-service. Việc hỗ trợ, tương tác và đạt đồng thuận chắc chắn sẽ cần thiết để các nhóm microservice sử dụng nền tảng cho công việc phân phối. Tính tập trung của nhóm platform cũng là một vấn đề tiềm tàng. Điều gì sẽ xảy ra khi các nhóm cần những thay đổi xung đột nhau? Những thay đổi mới được kiểm thử trên tất cả các nhóm như thế nào?</p>
+
+<p>Mô hình platform chỉ hoạt động nếu có các công cụ và quy trình cho phép một chế độ tương tác tự phục vụ, ít phối hợp. Điều đó đòi hỏi rất nhiều nỗ lực ban đầu cũng như nỗ lực liên tục và không nên bị xem nhẹ. Ví dụ, một môi trường dựa trên Terraform không nên được cung cấp cho các nhóm microservice nếu không có tài liệu, hệ thống theo dõi issue và mức hỗ trợ hợp lý <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="coordination costs" data-startref="infrachcoord" id="idm46223566764408"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="coordination costs" data-startref="chinfracoord" id="idm46223566762888"/><a data-type="indexterm" data-primary="coordination cost" data-secondary="infrastructure cost and" data-startref="coordinf" id="idm46223566761400"/>đi kèm.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Trong một hệ thống microservices hoàn chỉnh của bất kỳ tổ chức nào có quy mô vừa phải trở lên, thay đổi hạ tầng gần như luôn phát sinh thêm chi phí phối hợp do các quy trình kiểm soát bắt buộc. Tác động tiềm tàng của một quyết định hạ tầng tồi là rất lớn, vì vậy việc yêu cầu kiểm tra về bảo mật, kinh doanh và rủi ro trước khi triển khai thay đổi là điều phổ biến. Một cách thực tế để giảm chi phí phối hợp là coi các nhóm đó như những bên tiêu thụ của nền tảng và thiết kế giải pháp tương ứng.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Infrastructure change: Downtime"><div class="sect3" id="infra-change-downtime">
+<h3>Thay đổi Hạ tầng: Downtime</h3>
+
+<p>Thật khó để thực hiện <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="downtime" id="infrachdown"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="downtime" id="chinfradown"/><a data-type="indexterm" data-primary="downtime" data-secondary="infrastructure cost and" id="downinf"/>thay đổi hạ tầng mà không gây ra một chút downtime nào. Đó là vì hạ tầng là phần nền tảng đến mức cốt lõi của một hệ thống phần mềm. Ví dụ, làm sao bạn có thể nâng cấp một máy chủ Kubernetes hoặc thực hiện một thay đổi mạng lớn mà không tạm thời làm gián đoạn hệ thống?</p>
+
+<p>Hệ thống hạ tầng mà chúng ta đã xây dựng có thể xử lý việc mở rộng và bổ sung tương đối dễ dàng. Tất cả những gì cần là một ít mã Terraform chạy qua pipeline. Tuy nhiên, hệ thống của chúng ta không quá giỏi trong việc xử lý thay đổi trên các phần hiện có mà không gây ra ít nhất một khoảng gián đoạn nhỏ.</p>
+
+<p>Một thách thức lớn với chúng ta là bản chất bất biến của hạ tầng. Nếu muốn thực hiện dù chỉ là một thay đổi nhỏ trên một thành phần, trước tiên chúng ta cần hủy nó đi. Điều đó có thể trở thành vấn đề nếu ta vẫn muốn xử lý tải và lưu lượng trong cùng thời gian đó.</p>
+
+<p>Để thực hiện kiểu thay đổi hạ tầng tại chỗ như vậy, chúng ta có thể áp dụng mẫu triển khai blue-green (xem <a data-type="xref" href="#blue-green">“Triển khai Blue-Green”</a>). Thực tế, chúng ta thậm chí còn tiến thêm một bước và dùng <a href="https://oreil.ly/enM_P">mẫu triển khai phoenix</a>. Mẫu này tương tự blue-green, nhưng thay vì duy trì một môi trường nhàn rỗi, chúng ta sẽ tạo môi trường mới khi cần bằng pipeline IaC của mình.</p>
+
+<p>Điều đó có nghĩa là chúng ta có thể dựng lên một môi trường mới cùng với thay đổi của mình. Sau một vài lần kiểm thử, chúng ta có thể triển khai toàn bộ microservice vào đó, và nếu mọi thứ đều ổn, chúng ta có thể chuyển lưu lượng live sang môi trường mới. Ví dụ, một API gateway hoặc load balancer sẽ cung cấp cho chúng ta các tính năng định tuyến lưu lượng cần thiết để thực hiện kiểu chuyển đổi đó.</p>
+
+<p>Nhưng vấn đề lớn của chúng ta là dữ liệu. Chúng ta không có sự tách biệt sạch sẽ giữa instance dữ liệu và instance ứng dụng. Để ngắn gọn và đơn giản, chúng ta đã đặt toàn bộ cơ sở dữ liệu của mình trong cùng mạng với các instance microservice. Điều đó có nghĩa là chúng ta không có cách dễ dàng để dựng một môi trường mới mà không phải làm công việc sao chép dữ liệu khá nặng nề. Điều đó sẽ làm tăng rất nhiều độ phức tạp cho quy trình thay đổi.</p>
+
+<p>Nếu zero downtime là một nguyên tắc quan trọng đối với bạn, bạn sẽ cần xem xét lại thiết kế hạ tầng từ góc nhìn dữ liệu <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="downtime" data-startref="infrachdown" id="idm46223566746056"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="downtime" data-startref="chinfradown" id="idm46223566744536"/><a data-type="indexterm" data-primary="downtime" data-secondary="infrastructure cost and" data-startref="downinf" id="idm46223566743048"/>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Infrastructure change: Consumer impact"><div class="sect3" id="idm46223566741576">
+<h3>Thay đổi Hạ tầng: Tác động tới Bên Tiêu thụ</h3>
+
+<p>Các bên tiêu thụ ứng dụng của chúng ta sẽ không <a data-type="indexterm" data-primary="infrastructure" data-secondary="change and" data-tertiary="consumer impact" id="idm46223566740056"/><a data-type="indexterm" data-primary="change" data-secondary="infrastructure" data-tertiary="consumer impact" id="idm46223566738808"/><a data-type="indexterm" data-primary="consumer impact" data-secondary="infrastructure cost and" id="idm46223566737592"/>tương tác trực tiếp với hạ tầng. Tuy nhiên, vì chúng ta đã quyết định cung cấp hạ tầng “như một dịch vụ” trong mô hình vận hành của mình, nên cần xem xét tác động của thay đổi lên các nhóm microservice.</p>
+
+<p>Khi bạn thay đổi bất kỳ phần nào của hạ tầng, bạn sẽ cần cân nhắc thay đổi đó có thể ảnh hưởng như thế nào tới tất cả các nhóm microservice đang tiêu thụ và sử dụng nền tảng như một dịch vụ. Điều này có thể trở thành một hoạt động phối hợp khá lớn khi số lượng microservice trong hệ thống tăng lên.</p>
+
+<p>Thực ra, kiến trúc mà chúng ta đã xây dựng không làm được nhiều để giải quyết vấn đề này. Nếu bạn dùng kiến trúc đúng như hiện trạng, bạn sẽ cần làm một số việc để bảo đảm thay đổi hạ tầng không làm hỏng các microservice hiện có. Sẽ cần có một số hoạt động kiểm thử mỗi khi thay đổi được thực hiện.</p>
+
+<p>Để giữ chi phí phối hợp ở mức nhẹ, các nhóm platform và microservice cần thiết lập một phương pháp giao tiếp về thay đổi, giữ cho kiểm thử tự động luôn được cập nhật và chia sẻ trách nhiệm về độ tin cậy cũng như chất lượng tổng thể của hệ thống. Như mọi khi, điều đó đòi hỏi sự kết hợp giữa Team Topologies, kiến trúc, cùng công cụ và công nghệ tốt.</p>
+
+<p>Có một điều mà chúng ta có thể chắc chắn là số lượng microservice sẽ tăng vượt xa hai dịch vụ mà chúng ta dùng trong ví dụ hệ thống đặt vé máy bay. Vì vậy sẽ có rất nhiều thay đổi để các nhóm microservice phải xử lý. Hãy đi sâu vào những thay đổi đó tiếp theo.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Microservices Changes"><div class="sect2" id="idm46223566809192">
+<h2>Thay đổi Microservices</h2>
+
+<p>Phần lớn những thay đổi mà bạn sẽ cần <a data-type="indexterm" data-primary="microservices" data-secondary="changes" id="idm46223566731752"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" id="idm46223566730776"/>thực hiện trong hệ thống sẽ là trên chính các microservice. Khi bạn muốn cung cấp sản phẩm mới, thay đổi cách một trải nghiệm người dùng hoạt động, hoặc đơn giản chỉ tinh chỉnh hệ thống, rất có thể bạn sẽ thực hiện thay đổi trong hệ con microservices. Điều đó có thể có nghĩa là tạo một microservice mới, cập nhật logic của một dịch vụ hiện có, hoặc thậm chí ngừng sử dụng, tách hoặc gộp các dịch vụ.</p>
+
+<p>Trong kiến trúc up and running của mình, rất dễ hình dung rằng chúng ta có thể muốn bổ sung thêm tính năng cho hệ thống du lịch. Ví dụ, chúng ta có thể muốn thêm đặt vé tàu hỏa vào hệ thống tìm kiếm và đặt chỗ của mình. Trong trường hợp đó, thật dễ tưởng tượng rằng chúng ta sẽ tạo một cụm microservice mới và cập nhật API ở gateway để hỗ trợ những tính năng mở rộng mới đó.</p>
+
+<p>Như chúng ta đã thấy trong mọi miền, việc thêm một thứ mới thường là kiểu thay đổi dễ thực hiện nhất. Mọi thứ trở nên phức tạp hơn khi chúng ta cần thay đổi một dịch vụ đang chạy. Hãy nghĩ tới những biến chứng có thể phát sinh từ các kiểu thay đổi sau:</p>
+
+<ul>
+<li>
+<p>Tách microservice flight-information thành các dịch vụ cho chuyến bay nội địa và quốc tế</p>
+</li>
+<li>
+<p>Cập nhật dịch vụ flight-reservation với trạng thái đặt chỗ mới là “tentative”</p>
+</li>
+<li>
+<p>Gộp microservice flight-information và flight-reservation lại với nhau</p>
+</li>
+</ul>
+
+<p>Trong tất cả các trường hợp đó, việc quản lý thay đổi trở nên phức tạp hơn vì các dịch vụ này đang được sử dụng. May mắn thay, kiến trúc mà chúng ta cùng xây dựng thực hiện rất tốt việc giảm thiểu những tác động đó. Hãy cùng xem xét thay đổi microservices qua lăng kính của bốn tác động thay đổi quan trọng.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Microservices: Implementation costs"><div class="sect3" id="idm46223566723640">
+<h3>Microservices: Chi phí Thực hiện</h3>
+
+<p>Khi nói đến việc thay đổi một <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="implementation costs" id="microchimp"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="implementation costs" id="chmicroimp"/><a data-type="indexterm" data-primary="implementation cost" data-secondary="microservice change" id="impmicroch"/>microservice, các chi phí thực hiện chính đến từ khả năng hiểu, bảo trì và kiểm thử mã nguồn. Trong kiến trúc của mình, chúng ta đã đưa ra một số quyết định quan trọng để giảm chi phí thực hiện:</p>
+<dl>
+<dt>Dùng Event Storming để xác định kích cỡ phù hợp cho microservice</dt>
+<dd>
+<p>Event Storming đã giúp chúng ta <a data-type="indexterm" data-primary="event storming" data-secondary="microservices change" id="idm46223566715896"/><a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="event storming" id="idm46223566714920"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="event storming" id="idm46223566713704"/>xác định ranh giới cho các microservice sao cho nhất quán về mặt nội tại và giải quyết các phần cụ thể của miền nghiệp vụ. Hiệu quả thu được là khả năng hiểu mã nguồn sẽ tốt hơn và thay đổi có thể được triển khai theo các lô nhỏ hơn với tốc độ cao hơn.</p>
+</dd>
+</dl>
+<dl class="less_space pagebreak-before">
+<dt>Tất cả microservice đều dùng microservice-bootstrap</dt>
+<dd>
+<p>Framework <code>microservice-bootstrap</code> mang lại <a data-type="indexterm" data-primary="microservice-bootstrap" id="idm46223566709464"/>cho các nhóm của chúng ta một cách nhất quán để tài liệu hóa và kiểm thử các microservice mà họ phát triển. Khi bắt buộc dùng framework này, chúng ta đã giảm bớt một phần gánh nặng của việc thực hiện và kiểm thử thay đổi trên toàn tổ chức. Các nhà phát triển có thể nhanh chóng làm quen với công cụ, và công việc kiểm thử cũng như build service có thể trở thành một năng lực chung giữa các nhóm.</p>
+</dd>
+<dt>Dùng CI/CD cho microservice</dt>
+<dd>
+<p>Việc sử dụng pipeline CI/CD có nghĩa là <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="CI/CD pipeline" id="idm46223566706936"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="CI/CD pipeline" id="idm46223566705688"/><a data-type="indexterm" data-primary="CI/CD pipeline" data-secondary="microservices change" id="idm46223566704472"/>mọi thay đổi mã nguồn của chúng ta đều được kiểm thử, lint và xác thực. Hiệu quả của điều này là xác suất mã nguồn ở trạng thái có thể sử dụng và bảo trì được sẽ cao hơn vào thời điểm cần thực hiện thay đổi mới.</p>
+</dd>
+</dl>
+
+<p>Nhìn chung, việc xác định đúng kích cỡ của dịch vụ và bộ công cụ DevOps mà chúng ta đã đưa vào sử dụng sẽ làm giảm đáng kể chi phí <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="implementation costs" data-startref="microchimp" id="idm46223566702424"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="implementation costs" data-startref="chmicroimp" id="idm46223566700904"/><a data-type="indexterm" data-primary="implementation cost" data-secondary="microservice change" data-startref="impmicroch" id="idm46223566699416"/>khi thực hiện thay đổi mã nguồn cho microservice trong 
+<span class="keep-together">kiến trúc của chúng ta.</span></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Microservices: Coordination costs"><div class="sect3" id="idm46223566697352">
+<h3>Microservices: Chi phí Phối hợp</h3>
+
+<p>Chi phí phối hợp có thể là một <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="coordination costs" id="microchcoord"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="coordination costs" id="chmicrocoord"/><a data-type="indexterm" data-primary="coordination cost" data-secondary="microservice change" id="coordmicroch"/>vấn đề lớn khi thực hiện thay đổi phần mềm. Theo thời gian, một đoạn mã ứng dụng ban đầu đơn giản có thể phát triển thành một mớ phụ thuộc chằng chịt với các thư viện, thành phần và hệ thống khác. Những phụ thuộc đó khiến việc thay đổi nhanh trở nên khó khăn hơn do ma sát tổ chức phát sinh khi phải làm việc với nhiều người và nhiều nhóm khác nhau để hiểu liệu thay đổi có thể được thực hiện một cách an toàn hay không.</p>
+
+<p>Trong kiến trúc của chúng ta, chúng ta đã đưa ra một vài quyết định có thể giúp giảm chi phí này. Trong <a data-type="xref" href="ch01.html#what-are-microservices">“Microservices là gì?”</a>, chúng ta đã mô tả một định nghĩa về microservice nhấn mạnh các đặc điểm độc lập trong kỹ nghệ và phát hành microservice. Cách tư duy đó đã dẫn chúng ta tới những quyết định có thể gia tăng tính độc lập của một nhóm microservice:</p>
+
+<ul>
+<li>
+<p>Mỗi microservice chỉ thuộc sở hữu của một nhóm duy nhất.</p>
+</li>
+<li>
+<p>Mỗi microservice có repository và pipeline CI/CD riêng.</p>
+</li>
+</ul>
+
+<p>Khi kết hợp lại, những quyết định này làm tăng quyền tự chủ của các nhóm đang thực hiện thay đổi mã nguồn microservice.</p>
+
+<p>Ngoài việc giảm phối hợp liên nhóm, quyết định “xác định đúng kích cỡ” ranh giới dịch vụ và giữ quy mô nhóm trong giới hạn còn bảo đảm rằng chi phí phối hợp bên trong nhóm cũng sẽ tương đối thấp. Có thể nói rằng việc giảm chi phí phối hợp cho các thay đổi mã nguồn microservice là một trong những động lực chính của kiến trúc mà chúng ta đã xây dựng.</p>
+
+<p>Tuy nhiên, có hai lĩnh vực mà chi phí phối hợp khó tránh khỏi trong kiến trúc up and running của chúng ta: các sự kiện vòng đời và thay đổi giao diện.</p>
+
+<p>Trong <a data-type="xref" href="ch02.html#ch-designing-ms-op-model">Chương 2</a>, chúng ta đã giới thiệu nhóm hệ thống chịu trách nhiệm về sức khỏe và giá trị của toàn bộ hệ thống. Những kiểu thay đổi xuất phát từ nhóm hệ thống có thể dẫn đến mức độ phối hợp cao. Ví dụ, điều gì sẽ xảy ra khi nhóm hệ thống quyết định rằng hai microservice nên được gộp thành một? Tệ hơn nữa, điều gì sẽ xảy ra nếu hai microservice đó thuộc sở hữu của hai nhóm khác nhau? Trong kiến trúc của chúng ta, các kiểu thay đổi như vậy sẽ đòi hỏi nhiều thương lượng, lập kế hoạch và giao tiếp hơn rất nhiều so với thay đổi mã nguồn của một microservice riêng lẻ.</p>
+
+<p>Chúng ta xem đây là một đánh đổi chi phí chấp nhận được. Theo kinh nghiệm của chúng tôi, các thay đổi về vòng đời và tinh chỉnh hệ thống tương đối hiếm so với việc thay đổi mã để phản ánh yêu cầu kinh doanh hoặc công nghệ mới. Việc tối ưu mô hình thay đổi cho các kiểu thay đổi mà chúng ta kỳ vọng sẽ xảy ra thường xuyên hơn là hoàn toàn hợp lý.</p>
+
+<p>Thay đổi mã nguồn của một microservice là một chuyện, nhưng bạn cũng thường sẽ cần thay đổi giao diện của microservice. Trong những trường hợp đó, có thể sẽ cần thêm nỗ lực phối hợp do bản chất mang tính hợp đồng của API giữa bên tiêu thụ và bên cung cấp. Chúng ta sẽ đề cập chi tiết hơn đến yếu tố thay đổi này trong <a data-type="xref" href="#microservice-consumer-impact">“Microservices: Tác động tới Bên Tiêu thụ”</a>.</p>
+
+<p>Cuối cùng, trong <a data-type="xref" href="ch02.html#ch-designing-ms-op-model">Chương 2</a>, chúng ta đã quyết định có một nhóm phát hành duy nhất chịu trách nhiệm cập nhật môi trường production. Quyết định này có tiềm năng sai lệch nhiều nhất! Chúng ta đã thiết lập nhóm phát hành để dành sự chú ý đặc biệt cho thay đổi và chi phí phối hợp vốn thường đi kèm với nó. Chúng ta cũng đã cố gắng trang bị cho nhóm phát hành các công cụ triển khai để giảm thiểu bất kỳ tác động nào tới tốc độ. Nhưng rốt cuộc, nếu nhóm phát hành trở thành nút thắt cổ chai đối với thay đổi, thiết kế hệ thống cần phải được xem xét lại. Chúng ta sẽ phải đánh giá lại topology và các công cụ hỗ trợ chu kỳ phát hành.</p>
+
+<p>Nhìn chung, chi phí phối hợp của thay đổi microservice trong kiến trúc của chúng ta là thấp. Điều đó có được nhờ mô hình vận hành, công cụ và các quyết định thiết kế mà chúng ta đã đưa ra xuyên suốt <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="coordination costs" data-startref="microchcoord" id="idm46223566678488"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="coordination costs" data-startref="chmicrocoord" id="idm46223566676968"/><a data-type="indexterm" data-primary="coordination cost" data-secondary="microservice change" data-startref="coordmicroch" id="idm46223566675480"/>cuốn sách này.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Microservices: Downtime"><div class="sect3" id="microservice-downtime">
+<h3>Microservices: Downtime</h3>
+
+<p>Một lĩnh vực thay đổi khác mà chúng ta <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="downtime" id="idm46223566672424"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="downtime" id="idm46223566671176"/><a data-type="indexterm" data-primary="downtime" data-secondary="microservice change" id="idm46223566669960"/>đã tối ưu hóa là giảm thiểu downtime cần thiết khi một microservice riêng lẻ được thay đổi. Đó là nhờ các công cụ và hạ tầng mà chúng ta đã giới thiệu ở tầng platform. Chìa khóa để giảm chi phí này là khả năng dùng mẫu triển khai canary (<a data-type="xref" href="#canary-deployment">“Triển khai Canary”</a>) cho các đợt phát hành microservice. Khi đến lúc phát hành một phiên bản mới của microservice, bạn có thể dùng bộ công cụ mà chúng ta đã cài đặt để thực hiện quy trình thay đổi sau:</p>
+<ol class="less_space pagebreak-before">
+<li>
+<p>Triển khai phiên bản mới của microservice dưới dạng canary, chạy song song với phiên bản hiện có.</p>
+</li>
+<li>
+<p>Triển khai một quy tắc định tuyến lưu lượng để gửi một tỷ lệ nhỏ lưu lượng tới phiên bản mới.</p>
+</li>
+<li>
+<p>Quan sát tình trạng của phiên bản mới và xác minh rằng kết quả đúng như kỳ vọng.</p>
+</li>
+<li>
+<p>Nâng cấp microservice canary bằng cách định tuyến toàn bộ lưu lượng tới phiên bản mới.</p>
+</li>
+<li>
+<p>Rút lưu lượng khỏi phiên bản cũ và xóa nó.</p>
+</li>
+
+</ol>
+
+<p>Mẫu này sẽ hoạt động với hầu hết các thay đổi bạn cần thực hiện, và bạn sẽ có thể dùng Argo CD để điều phối các hoạt động canary. Tuy nhiên, hãy cẩn thận khi dùng mẫu này nếu phiên bản mới của microservice sẽ tạo ra một thay đổi có thể ảnh hưởng tới phiên bản cũ. Ví dụ, nếu phiên bản mới thay đổi dữ liệu trong một cơ sở dữ liệu dùng chung, hãy chắc chắn rằng thay đổi đó tương thích với các phiên bản cũ đang chạy.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Microservices: Consumer impact"><div class="sect3" id="microservice-consumer-impact">
+<h3>Microservices: Tác động tới Bên Tiêu thụ</h3>
+
+<p>Cho tới lúc này, chúng ta chủ yếu tập trung vào <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="consumer impact" id="microchcons"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="consumer impact" id="chmicrocons"/><a data-type="indexterm" data-primary="consumer impact" data-secondary="microservice change" id="consmicroch"/>các thay đổi đối với mã nguồn microservice. Logic, xác thực và hành vi của dịch vụ đều được phản ánh trong mã nguồn, vì vậy phần lớn các thay đổi của chúng ta sẽ nằm ở đó. Nhưng đôi khi bạn sẽ cần thay đổi giao diện (hoặc API) của một microservice, và điều đó có thể gây ra những vấn đề rất lớn.</p>
+
+<p>Việc thay đổi giao diện của một microservice gần như là điều không thể tránh khỏi. Sớm muộn gì bạn cũng sẽ muốn thay đổi tham số của một thao tác hoặc thay đổi dữ liệu được trả về từ một lời gọi. Vấn đề là khi các dịch vụ và thành phần khác bắt đầu phụ thuộc vào giao diện đó, ngay cả thay đổi nhỏ cũng có thể tạo ra rất nhiều công việc cho tất cả mọi người liên quan.</p>
+
+<p>Chúng ta chưa thực sự xây dựng điều gì trong kiến trúc của mình để làm giảm tác động tới bên tiêu thụ khi thực hiện thay đổi. Cách tốt nhất để giảm tác động của một thay đổi API là tuân theo một số thực hành thiết kế tốt: đừng thay đổi những gì bạn đã phát hành, viết mã client có thể chịu được dữ liệu mới và đừng biến các tham số đầu vào mới thành bắt buộc.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nguồn tài liệu yêu thích của chúng tôi về lời khuyên thiết kế API là Mike Amundsen. Nếu bạn quan tâm tới việc xây dựng các API có khả năng tiến hóa, chúng tôi khuyên bạn nên học các mẫu thay đổi API trong cuốn <em>Design and Build Great Web APIs</em> (Pragmatic Bookshelf, 2020) của ông.</p>
+</div>
+
+<p>Ngoài các nguyên tắc thiết kế kiểu này, một số người thực hành microservices đã áp dụng contract testing như một cách để giảm chi phí phối hợp giữa các nhóm khi thay đổi giao diện. Trong contract testing, bên tiêu thụ và bên cung cấp chia sẻ một hợp đồng mô tả cách giao diện sẽ được sử dụng. Điều này cho phép bên cung cấp tự chạy 
+<span class="keep-together">contract</span> tests và xác thực rằng thay đổi của họ sẽ không ảnh hưởng tới client hiện có của một API.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Để đưa hệ thống của chúng ta vào hoạt động nhanh nhất có thể một cách hợp lý, chúng ta đã không đưa thành phần contract testing vào kiến trúc. Nhưng nhiều người thực hành đã thành công với <a href="https://pact.io">Pact</a> cho consumer-driven contract testing. Các công cụ như Pact cho phép bên tiêu thụ và bên cung cấp liên tục chia sẻ và kiểm thử những thay đổi được thực hiện trên các giao diện của họ.</p>
+</div>
+
+<p>Nhưng ngay cả với contract testing, rất có thể bạn cuối cùng vẫn sẽ phải đưa vào một thay đổi làm hỏng mã nguồn của ai đó. Trong trường hợp đó, bạn sẽ cần triển khai một dạng nào đó của mẫu nhiều phiên bản (xem <a data-type="xref" href="#multiple-versions">“Nhiều Phiên bản”</a>) và duy trì microservice cũ cho đến khi nhóm client có thể thực hiện các thay đổi họ cần.</p>
+
+<p>Sau cùng, kiến trúc của chúng ta không làm được quá nhiều để giảm chi phí của những thay đổi gây tác động tới bên tiêu thụ. Thay đổi API là việc khó, và sẽ cần tư duy thiết kế tốt cùng kế hoạch tốt để biến những thay đổi đó thành có thể chi trả được. Một khu vực nguy hiểm khác là dữ liệu, và đó là điều <a data-type="indexterm" data-primary="microservices" data-secondary="change and" data-tertiary="consumer impact" data-startref="microchcons" id="idm46223566645144"/><a data-type="indexterm" data-primary="change" data-secondary="microservices" data-tertiary="consumer impact" data-startref="chmicrocons" id="idm46223566643624"/><a data-type="indexterm" data-primary="consumer impact" data-secondary="microservice change" data-startref="consmicroch" id="idm46223566642136"/>mà chúng ta sẽ đề cập tiếp theo.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Data Changes"><div class="sect2" id="idm46223566732920">
+<h2>Thay đổi Dữ liệu</h2>
+
+<p>Một trong những khía cạnh khó khăn nhất của việc duy trì kiến trúc microservices là xử lý dữ liệu. Mô hình dữ liệu vốn nổi tiếng là khó thay đổi. Tầng lưu trữ là một phần rất cần thiết của bất kỳ hệ thống phần mềm nào, nhưng khi đến lúc phải thay đổi cấu trúc dữ liệu, mọi thứ có thể trở nên phức tạp. Các thành phần phần mềm dần trở nên phụ thuộc vào hệ thống dữ liệu mà chúng sử dụng, và việc thay đổi những hệ thống đó có thể gây ra chi phí và tác động lớn cho toàn hệ thống.</p>
+
+<p>Chúng ta đã cố gắng đưa ra những quyết định cải thiện tình hình này và làm giảm chi phí của thay đổi mô hình dữ liệu. Hãy cùng xem kiến trúc dữ liệu mà chúng ta đã xây dựng qua bốn lăng kính thay đổi của mình.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Data: Implementation costs"><div class="sect3" id="idm46223566638264">
+<h3>Dữ liệu: Chi phí Thực hiện</h3>
+
+<p>Ở mức cơ bản nhất, <a data-type="indexterm" data-primary="change" data-secondary="data" data-tertiary="implementation costs" id="idm46223566636968"/><a data-type="indexterm" data-primary="data" data-secondary="change and" data-tertiary="implementation costs" id="idm46223566635720"/><a data-type="indexterm" data-primary="implementation cost" data-secondary="data changes" id="idm46223566634504"/>chi phí thay đổi một mô hình dữ liệu là hàm của mức độ phức tạp của cấu trúc, định dạng và các mối quan hệ trong đó, cũng như công cụ hoặc ngôn ngữ cần dùng để thực hiện thay đổi. Độ phức tạp của một mô hình có thể tăng lên khi có nhiều kiểu dữ liệu khác nhau, khóa duy nhất hoặc các giá trị phức tạp. Chi phí thực sự đến từ việc phải hiểu chính mô hình đó để có thể thay đổi một cách an toàn.</p>
+
+<p>Chúng ta chưa làm gì nhiều trong kiến trúc của mình một cách tường minh để ngăn mô hình dữ liệu trở nên quá phức tạp. Nhưng chúng ta đã đưa ra quyết định rằng microservice nên sở hữu dữ liệu của riêng mình. Chỉ riêng quyết định này thôi cũng sẽ giúp giới hạn phạm vi và kích thước của một mô hình dữ liệu, theo cùng cách mà nó giúp chúng ta giảm chi phí thay đổi mã nguồn.</p>
+
+<p>Vì vậy, cũng giống như với thay đổi mã nguồn, bạn sẽ nhận được rất nhiều lợi ích về chi phí thực hiện từ quyết định ưu tiên tính độc lập. Nhưng cũng giống như với mã nguồn, bạn sẽ cần tiếp tục đo lường chi phí thực hiện để bảo đảm rằng dịch vụ và mô hình dữ liệu của nó không phát triển tới mức làm mất đi lợi ích của một ranh giới mạnh.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Data: Coordination costs"><div class="sect3" id="idm46223566631256">
+<h3>Dữ liệu: Chi phí Phối hợp</h3>
+
+<p>Một lợi ích còn lớn hơn của <a data-type="indexterm" data-primary="change" data-secondary="data" data-tertiary="coordination costs" id="idm46223566629688"/><a data-type="indexterm" data-primary="data" data-secondary="change and" data-tertiary="coordination costs" id="idm46223566628440"/><a data-type="indexterm" data-primary="coordination cost" data-secondary="data changes" id="coorddat"/>việc ưu tiên tính độc lập là giảm chi phí phối hợp. Bằng cách quyết định rằng microservice sở hữu dữ liệu của riêng mình, chúng ta có thể tự do thay đổi cấu trúc dữ liệu mà không phải tham khảo ý kiến các nhóm khác hay chủ sở hữu hệ thống khác. Điều này trái ngược hoàn toàn với các mô hình truyền thống hơn, nơi nhiều nhóm có thể cùng dùng một dịch vụ dữ liệu dùng chung và mọi thay đổi cần được phối hợp cẩn thận giữa tất cả các bên sử dụng dữ liệu.</p>
+
+<p>Tuy nhiên, bạn nên cẩn trọng: cách tiếp cận dữ liệu độc lập có một chi phí ẩn. Chúng ta đã tối ưu kiến trúc của mình cho các thay đổi cục bộ, tự chủ và tốc độ cao. Điều đó khiến các thay đổi trên toàn hệ thống trở nên đắt đỏ hơn. Ví dụ, nếu bạn cần thay đổi định nghĩa của một mã nhận diện hãng hàng không trên phạm vi toàn cục, bạn sẽ phải phối hợp với tất cả các nhóm đã triển khai mô hình dữ liệu sử dụng nó. Trong kiến trúc của chúng ta, điều đó có thể tốn kém hơn so với việc chỉ dùng một cơ sở dữ liệu dùng chung.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Một tài liệu rất tốt để hiểu các mẫu dữ liệu phân tán là cuốn <a class="orm:hideurl" href="https://www.oreilly.com/library/view/designing-data-intensive-applications/9781491903063/"><em>Designing Data-Intensive Applications</em></a> của Martin Kleppmann (O’Reilly, 2017).</p>
+</div>
+
+<p>Chúng ta quyết định tối ưu cho các thay đổi cục bộ vì theo kinh nghiệm của mình, tần suất thay đổi cục bộ cao hơn. Nhưng bạn sẽ cần thay đổi quyết định đó nếu hệ thống mà bạn đang xây dựng <a data-type="indexterm" data-primary="coordination cost" data-secondary="data changes" data-startref="coorddatch" id="idm46223566621304"/>có khả năng phải trải qua các thay đổi toàn cục, diện rộng.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nếu bạn nhận thấy mình thường xuyên phải thay đổi nhiều mô hình dữ liệu trong hệ thống cùng một lúc, đó có thể là dấu hiệu cho thấy ranh giới của các microservice cần được đánh giá lại.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Data: Downtime"><div class="sect3" id="idm46223566618536">
+<h3>Dữ liệu: Downtime</h3>
+
+<p>Mô hình dữ liệu độc lập của chúng ta <a data-type="indexterm" data-primary="change" data-secondary="data" data-tertiary="downtime" id="idm46223566617208"/><a data-type="indexterm" data-primary="data" data-secondary="change and" data-tertiary="downtime" id="idm46223566615960"/><a data-type="indexterm" data-primary="downtime" data-secondary="data changes" id="idm46223566614744"/>mang lại những lợi thế lớn khi xét tới phối hợp. Nhưng nó không được xây dựng cho các thay đổi mô hình dữ liệu zero-downtime. Điều đó đặc biệt đúng với cơ sở dữ liệu MySQL mà microservice flight-information của chúng ta sử dụng.</p>
+
+<p>Cội nguồn của hạn chế này là việc chúng ta đang dùng một instance cơ sở dữ liệu dùng chung để phục vụ nhiều bản sao của một microservice. Khi đến lúc phải thay đổi mô hình dữ liệu, rất khó để làm điều đó mà không ảnh hưởng tới các microservice hiện có đang chạy. Điều này có thể dễ thực hiện hơn với kho Redis mà dịch vụ reservations của chúng ta dùng, nhưng chúng ta vẫn cần cẩn trọng để không tạo ra những thay đổi làm hỏng các phiên bản hiện có.</p>
+
+<p>Trong trường hợp cần thực hiện một thay đổi mô hình dữ liệu mang tính xâm lấn, lựa chọn đơn giản nhất có thể là hủy các phiên bản microservice hiện có và thay chúng bằng các instance mới có thể triển khai thay đổi dữ liệu đó. Trong môi trường Kubernetes, việc này có thể được thực hiện với tác động tối thiểu lên dịch vụ. Nhưng nếu bất kỳ downtime nào cũng là điều không thể chấp nhận, thì sẽ cần một triển khai blue-green phức tạp hơn.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Data: Consumer impact"><div class="sect3" id="idm46223566611512">
+<h3>Dữ liệu: Tác động tới Bên Tiêu thụ</h3>
+
+<p>Bởi vì chúng ta đã đưa ra quyết định <a data-type="indexterm" data-primary="change" data-secondary="data" data-tertiary="consumer impact" id="idm46223566610136"/><a data-type="indexterm" data-primary="data" data-secondary="change and" data-tertiary="consumer impact" id="idm46223566608888"/><a data-type="indexterm" data-primary="consumer impact" data-secondary="data changes" id="idm46223566607672"/>rằng microservice nên sở hữu dữ liệu của riêng mình, nên tác động của một thay đổi mô hình dữ liệu được giới hạn trong chính dịch vụ đó. Nhờ vậy, chúng ta có thể tự do thay đổi mà không ảnh hưởng trực tiếp tới bên tiêu thụ của một dịch vụ. Vì mô hình dữ liệu được đóng gói bên trong microservice, các nhóm microservice của bạn sẽ có nhiều quyền tự chủ hơn để thay đổi mô hình của họ, dù như chúng ta đã nhấn mạnh ở trên, những thay đổi này có thể đòi hỏi một lượng downtime nhỏ.</p>
+
+<p>Trong thực tế, một thay đổi mô hình dữ liệu rất có thể sẽ kéo theo thay đổi mã nguồn và thậm chí cả thay đổi giao diện. Nhưng chúng ta có quyền tách riêng hoặc triển khai lệch pha những sửa đổi này, để một thay đổi mô hình dữ liệu có thể được thực hiện trước, trước khi chúng ta triển khai các thay đổi sẽ tác động trực tiếp tới bên tiêu thụ.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Summary"><div class="sect1" id="idm46223566605240">
+<h1>Tóm tắt</h1>
+
+<p>Nhìn chung, chúng ta đã thấy rằng kiến trúc mình xây dựng được thiết kế để giúp thay đổi trở nên dễ dàng hơn và hiệu quả hơn về chi phí. Thay đổi có thể đến từ các nguồn bên ngoài hoặc nội tại, nhưng điều cốt yếu là giảm chi phí và tác động để các nhóm của bạn có nhiều tự do hơn trong việc cải tiến hệ thống cũng như các sản phẩm và trải nghiệm mà hệ thống đó cung cấp.</p>
+
+<p>Chúng ta đã xem xét kiến trúc của mình qua các góc nhìn hạ tầng, mã nguồn, API và dữ liệu từ lăng kính của thay đổi. Như bạn đã thấy trong chương này, các quyết định mà chúng ta đưa ra trong suốt cuốn sách đã kết hợp lại để tạo thành một hồ sơ về khả năng thay đổi của hệ thống này. Một số quyết định của chúng ta là những đánh đổi nhằm tối ưu cho những kiểu thay đổi nhất định. Một số quyết định khác là những đánh đổi dựa trên các ràng buộc của chính việc thiết kế trong khuôn khổ một cuốn sách!</p>
+
+<p>Dù lý do là gì, giờ đây chúng ta đã vừa xây dựng được một kiến trúc microservices, vừa đánh giá được tính hữu dụng và mức độ phù hợp của nó. Điều duy nhất còn lại để làm với kiến trúc của mình là khiến nó trở nên tốt hơn nữa. Đó là điều chúng ta sẽ đề cập trong chương cuối cùng.</p>
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>

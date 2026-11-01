@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Lời nói đầu</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="preface" epub:type="preface" data-pdf-bookmark="Lời nói đầu"><div class="preface" id="idm46223583016440">
+<h1>Lời nói đầu</h1>
+
+
+<p>Mười năm trước, một nhóm kiến trúc sư phần mềm đã cùng nhau tập hợp và đặt ra thuật ngữ <em>microservices</em> để định nghĩa một phong cách kiến trúc phần mềm đã hình thành. Kể từ đó, đã có sự bùng nổ của các khóa học, video và các ấn phẩm viết về phong cách microservices. Trên thực tế, vào năm 2016 chúng tôi đã đồng tác giả <a class="orm:hideurl" href="https://learning.oreilly.com/library/view/microservice-architecture/9781491956328"><em>Microservice Architecture</em></a>, một cuốn sách cung cấp phần nhập môn về các nguyên lý của một hệ thống microservice.</p>
+
+<p>Kể từ khi cuốn sách đó được xuất bản, chúng tôi và nhiều người khác đã có cơ hội sống cùng những hệ thống microservice mà mình xây dựng. Trải nghiệm của chính chúng tôi, cũng như các cuộc trao đổi với những người thực hành khác, đã dẫn đến sự hiểu biết tốt hơn về những vấn đề thực tiễn mà người triển khai phải đối mặt. Phần lớn sự hiểu biết ấy đến từ thành công, nhưng một số bài học hữu ích nhất lại đến từ sai lầm.</p>
+
+<p>Chúng tôi đã cố gắng chắt lọc trải nghiệm của những người thực hành thành một cẩm nang mang đậm quan điểm. Chúng ta đang sống trong thời đại có vô vàn lời khuyên từ người thực hành. Nhưng việc điều hướng trong biển thông tin này và ghép chúng lại theo cách thực sự hiệu quả không hề dễ dàng. Cuốn sách này đưa ra một mô hình thực tiễn, mang tính chỉ dẫn rõ ràng, bao quát từ thiết kế nhóm, thiết kế miền, hạ tầng, kỹ thuật cho đến phát hành. Mục tiêu của chúng tôi là mang đến cho bạn một góc nhìn thống nhất về việc triển khai microservice và một bước khởi đầu vững chắc trên hành trình áp dụng.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Ai nên đọc cuốn sách này"><div class="sect1" id="idm46223583128296">
+<h1>Ai nên đọc cuốn sách này</h1>
+
+<p>Chúng tôi viết cuốn sách này cho những người triển khai microservice. Mặc dù chúng tôi có đề cập đến một số nguyên lý và mẫu của hệ thống microservice, trọng tâm của cuốn sách là thiết kế và kỹ thuật mang tính thực tiễn. Nếu bạn là kiến trúc sư hoặc kỹ sư được giao nhiệm vụ xây dựng microservice hoặc một kiến trúc microservice, thì đây là cuốn sách dành cho bạn.</p>
+
+<p>Nhưng cuốn sách này cũng là một hướng dẫn hữu ích cho những độc giả đơn giản chỉ muốn có cái nhìn thật cận cảnh về việc triển khai microservice. Dù vai trò của bạn là gì, nếu bạn muốn hiểu công việc cần thiết để xây dựng một hệ thống microservice, bạn sẽ thấy cuốn sách này rất bổ ích.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Những gì bạn cần"><div class="sect1" id="idm46223583124728">
+<h1>Những gì bạn cần</h1>
+
+<p>Vì phạm vi của microservices khá rộng, chúng tôi sử dụng nhiều công cụ và phương pháp khác nhau. Nếu bạn muốn theo dõi toàn bộ các ví dụ, bạn sẽ cần cài đặt hoặc đăng ký để sử dụng các công cụ và nền tảng sau:</p>
+
+<ul>
+<li>
+<p>Docker</p>
+</li>
+<li>
+<p>Redis</p>
+</li>
+<li>
+<p>MySQL</p>
+</li>
+<li>
+<p>GitHub</p>
+</li>
+<li>
+<p>GitHub Actions</p>
+</li>
+<li>
+<p>Terraform</p>
+</li>
+<li>
+<p>Amazon Web Services</p>
+</li>
+<li>
+<p><code>kubectl</code></p>
+</li>
+<li>
+<p>Helm</p>
+</li>
+<li>
+<p>Argo CD</p>
+</li>
+</ul>
+
+<p>Chúng tôi cung cấp hướng dẫn về nơi và cách truy cập các công cụ này trong các phần 
+<span class="keep-together">tương ứng.</span></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Các quy ước được sử dụng trong cuốn sách này"><div class="sect1" id="idm46223583003400">
+<h1>Các quy ước được sử dụng trong cuốn sách này</h1>
+
+<p>Các quy ước kiểu chữ sau được sử dụng trong cuốn sách này:</p>
+<dl>
+<dt><em>Chữ nghiêng</em></dt>
+<dd>
+<p>Biểu thị các thuật ngữ mới, URL, địa chỉ email, tên tệp và phần mở rộng tệp.</p>
+</dd>
+<dt><code>Chữ có độ rộng cố định</code></dt>
+<dd>
+<p>Được dùng cho các đoạn mã chương trình, cũng như trong các đoạn văn để chỉ các thành phần chương trình như tên biến hoặc hàm, cơ sở dữ liệu, kiểu dữ liệu, biến môi trường, câu lệnh và từ khóa.</p>
+</dd>
+<dt><strong><code>Chữ có độ rộng cố định, in đậm</code></strong></dt>
+<dd>
+<p>Hiển thị các lệnh hoặc văn bản khác mà người dùng cần gõ nguyên văn.</p>
+</dd>
+<dt><em><code>Chữ có độ rộng cố định, in nghiêng</code></em></dt>
+<dd>
+<p>Hiển thị văn bản cần được thay thế bằng các giá trị do người dùng cung cấp hoặc bằng các giá trị được xác định theo ngữ cảnh.</p>
+</dd>
+</dl>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Phần tử này biểu thị một mẹo hoặc gợi ý.</p>
+</div>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Phần tử này biểu thị một ghi chú chung.</p>
+</div>
+<div data-type="warning" epub:type="warning"><h6>Cảnh báo</h6>
+<p>Phần tử này cho biết một cảnh báo hoặc lưu ý thận trọng.</p>
+</div>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Sử dụng các ví dụ mã"><div class="sect1" id="idm46223582911528">
+<h1>Sử dụng các ví dụ mã</h1>
+
+<p>Tài liệu bổ sung (ví dụ mã, bài tập, v.v.) có thể được tải xuống tại <a href="https://oreil.ly/MicroservicesUpandRunning"><em class="hyperlink">https://oreil.ly/MicroservicesUpandRunning</em></a>.</p>
+
+<p>Nếu bạn có câu hỏi kỹ thuật hoặc gặp vấn đề khi sử dụng các ví dụ mã, vui lòng gửi email tới <a class="email" href="mailto:bookquestions@oreilly.com"><em>bookquestions@oreilly.com</em></a>.</p>
+
+<p>Cuốn sách này ra đời để giúp bạn hoàn thành công việc của mình. Nhìn chung, nếu cuốn sách này cung cấp mã ví dụ, bạn có thể sử dụng chúng trong các chương trình và tài liệu của mình. Bạn không cần liên hệ xin phép chúng tôi trừ khi bạn sao chép lại một phần đáng kể của mã. Ví dụ, việc viết một chương trình sử dụng một vài đoạn mã từ cuốn sách này không cần xin phép. Tuy nhiên, việc bán hoặc phân phối các ví dụ từ sách của O’Reilly thì cần xin phép. Trả lời một câu hỏi bằng cách dẫn cuốn sách này và trích dẫn mã ví dụ thì không cần xin phép. Việc đưa một lượng đáng kể mã ví dụ từ cuốn sách này vào tài liệu của sản phẩm của bạn thì cần 
+<span class="keep-together">xin phép.</span></p>
+
+<p>Chúng tôi trân trọng việc ghi nguồn, nhưng nhìn chung không bắt buộc. Một ghi nguồn thường bao gồm tiêu đề, tác giả, nhà xuất bản và ISBN. Ví dụ: “<em>Microservices: Up and Running</em> của Ronnie Mitra và Irakli Nadareishvili (O’Reilly). Bản quyền 2021 Mitra Pandey Consulting, Ltd. và Irakli Nadareishvili, 978-1-492-07545-5.”</p>
+
+<p>Nếu bạn cho rằng việc sử dụng mã ví dụ của mình nằm ngoài phạm vi sử dụng hợp lý hoặc ngoài sự cho phép nêu trên, vui lòng liên hệ với chúng tôi tại <a class="email" href="mailto:permissions@oreilly.com"><em>permissions@oreilly.com</em></a>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Nền tảng học trực tuyến O’Reilly"><div class="sect1" id="idm46223582902632">
+<h1>Nền tảng học trực tuyến O’Reilly</h1>
+<div data-type="note" epub:type="note" class="ormenabled"><h6>Lưu ý</h6>
+<p>Trong hơn 40 năm qua, <a href="http://oreilly.com" class="orm:hideurl"><em class="hyperlink">O’Reilly Media</em></a> đã cung cấp đào tạo, tri thức và hiểu biết sâu sắc về công nghệ và kinh doanh để giúp các công ty thành công.</p>
+</div>
+
+<p>Mạng lưới chuyên gia và nhà đổi mới độc đáo của chúng tôi chia sẻ kiến thức và chuyên môn của họ thông qua sách, bài viết và nền tảng học trực tuyến của chúng tôi. Nền tảng học trực tuyến của O’Reilly mang đến cho bạn khả năng truy cập theo nhu cầu vào các khóa đào tạo trực tiếp, lộ trình học chuyên sâu, môi trường lập trình tương tác và một kho nội dung văn bản cùng video khổng lồ từ O’Reilly và hơn 200 nhà xuất bản khác. Để biết thêm thông tin, hãy truy cập <a href="http://oreilly.com" class="orm:hideurl"><em>http://oreilly.com</em></a>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Cách liên hệ với chúng tôi"><div class="sect1" id="idm46223582731240">
+<h1>Cách liên hệ với chúng tôi</h1>
+
+<p>Vui lòng gửi nhận xét và câu hỏi liên quan đến cuốn sách này tới nhà xuất bản:</p>
+<ul class="simplelist">
+  <li>O’Reilly Media, Inc.</li>
+  <li>1005 Gravenstein Highway North</li>
+  <li>Sebastopol, CA 95472</li>
+  <li>800-998-9938 (tại Hoa Kỳ hoặc Canada)</li>
+  <li>707-829-0515 (quốc tế hoặc nội hạt)</li>
+  <li>707-829-0104 (fax)</li>
+</ul>
+
+<p>Bạn có thể truy cập trang web của cuốn sách này, nơi chúng tôi liệt kê các bản đính chính, ví dụ và mọi thông tin bổ sung, tại <a href="https://oreil.ly/Microservices_Up_and_Running"><em class="hyperlink">https://oreil.ly/Microservices_Up_and_Running</em></a>.</p>
+
+<p>Hãy gửi email tới <a class="email" href="mailto:bookquestions@oreilly.com"><em>bookquestions@oreilly.com</em></a> để góp ý hoặc đặt câu hỏi kỹ thuật về cuốn sách này.</p>
+
+<p>Để biết tin tức và thông tin về sách cũng như các khóa học của chúng tôi, hãy truy cập <a href="http://oreilly.com"><em class="hyperlink">http://oreilly.com</em></a>.</p>
+
+<p>Tìm chúng tôi trên Facebook: <a href="http://facebook.com/oreilly"><em class="hyperlink">http://facebook.com/oreilly</em></a></p>
+
+<p>Theo dõi chúng tôi trên Twitter: <a href="http://twitter.com/oreillymedia"><em class="hyperlink">http://twitter.com/oreillymedia</em></a></p>
+
+<p>Xem chúng tôi trên YouTube: <a href="http://www.youtube.com/oreillymedia"><em class="hyperlink">http://www.youtube.com/oreillymedia</em></a></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Lời cảm ơn"><div class="sect1" id="idm46223582717048">
+<h1>Lời cảm ơn</h1>
+
+<p>Chúng tôi muốn cảm ơn các biên tập viên Melissa Potter và Deborah Baker của mình, cùng đội ngũ tại O’Reilly, những người mà nếu không có họ thì chúng tôi đã không bao giờ hoàn thành được cuốn sách này. Chúng tôi cũng muốn cảm ơn Pete Hodgson, Chris O’Dell, Lorinda Brandon, JP Morgenthal, Mike Amundsen và David Butland vì những góc nhìn sâu sắc, phản hồi và nhận xét vô cùng giá trị mà họ đã chia sẻ. Cuối cùng, chúng tôi muốn cảm ơn Capital One và Publicis Sapient vì sự hỗ trợ mà họ đã dành cho chúng tôi để biến cuốn sách này thành hiện thực.</p>
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>

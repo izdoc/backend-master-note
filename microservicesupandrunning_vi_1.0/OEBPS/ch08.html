@@ -1,0 +1,702 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Môi trường làm việc của nhà phát triển</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 8. Developer Workspace"><div class="chapter" id="ch-developer-workspace">
+<h1><span class="label">Chương 8. </span>Môi trường làm việc của nhà phát triển</h1>
+
+
+<p>Trong <a data-type="xref" href="ch01.html#ch-towards-a-microservices-architecture">Chương 1</a>, chúng ta đã thảo luận về cách một kiến trúc microservices thường mang lại nhiều lợi ích nhất khi được áp dụng cho các hệ thống phức tạp, đồng thời giải thích một số lý do nền tảng đứng sau nhận định này.</p>
+
+<p>Trong bất kỳ hệ thống nào có độ phức tạp ở mức hợp lý, cách bền vững duy nhất để bảo đảm những người tham gia với thiện chí hành xử theo hướng dẫn đến sự cộng tác tích cực và có thể dự đoán được là biến các hành vi đúng đắn trở thành lựa chọn dễ nhất và trực quan nhất. Nếu việc "làm đúng" là khó, theo thời gian đa số mọi người sẽ chọn con đường ít kháng cự nhất, và điều đó sẽ khiến họ đi chệch hướng. Vì vậy, việc đầu tư sớm vào các quy trình phát triển lặp lại được, có thể dự đoán được và được chuẩn hóa, nhằm tránh sự phức tạp không cần thiết và tạo ra một cấu trúc trực quan, dễ chịu cho các nhà phát triển, là điều thiết yếu.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Đầu tư vào một trải nghiệm nhà phát triển xuất sắc, hướng đến cách tiếp cận nhất quán và trực quan để mọi nhà phát triển đều có thể dễ dàng "làm đúng", là một trong những điều kiện tiên quyết bị đánh giá thấp nhất để xây dựng thành công văn hóa microservices.</p>
+</div>
+
+<p>Đó là lý do việc xây dựng các <a data-type="indexterm" data-primary="CI/CD pipeline" id="idm46223571362472"/>pipeline tích hợp liên tục và triển khai liên tục (CI/CD) vững chắc, cho cả mã nguồn lẫn hạ tầng, là một yếu tố then chốt thúc đẩy nỗ lực microservices của bạn. Do tính mô-đun của kiến trúc và sự nhấn mạnh vào khả năng triển khai độc lập của từng microservice, bạn sẽ có rất nhiều pipeline. Một điều chắc chắn cần tránh là mỗi nhóm tự tạo pipeline cho microservice của mình theo cách riêng, không có sự nhất quán nào với codebase của các microservice khác. Việc tạo một microservice mới phải là một quá trình nhanh chóng và có thể dự đoán được. Lý tưởng nhất, đây nên là một quy trình theo mẫu, trong đó phần lớn mọi thứ đều được tự động hóa hoàn toàn.</p>
+
+<p>Các pipeline CI/CD vững chắc là rất quan trọng, nhưng quan trọng không kém là cách thiết lập môi trường làm việc cục bộ và những thực hành mà các nhóm sử dụng để tạo ra mã nguồn. Phần lớn kỹ sư phần mềm dành đa số thời gian của mình để viết mã trên laptop. Can thiệp sớm vào quy trình này và bảo đảm cung cấp đúng định hướng cùng công cụ ở giai đoạn này cũng có thể mang lại lợi ích rất lớn về sau. Nói rõ hơn, điều đó không có nghĩa là bạn nên áp đặt mọi khía cạnh trong quy trình làm việc của nhà phát triển. Ví dụ, nếu bạn cố chuẩn hóa trình soạn thảo mã mà mọi thành viên của một đội ngũ đủ lớn buộc phải dùng, bạn sẽ nhanh chóng tạo ra vô số kẻ phản đối đầy nhiệt huyết và chẳng đạt được gì. Tuy nhiên, không cần trở thành một bạo chúa độc đoán, chúng ta vẫn có thể và nên tuyên bố một số nguyên tắc nền tảng mà nhóm bắt buộc phải tuân theo.</p>
+
+<p>Trong chương này, chúng ta sẽ bắt đầu bằng cách giới thiệu bộ 10 quy tắc và hướng dẫn mang tính quan điểm rất rõ ràng cho việc thiết lập môi trường làm việc của nhà phát triển, những điều mà chúng tôi đã áp dụng rất thành công trong một số dự án microservices trước đây. Tiếp theo, chúng tôi sẽ hướng dẫn bạn cách thiết lập các môi trường cục bộ được container hóa trên nhiều nền tảng. Chúng tôi sẽ chỉ cho bạn cách khởi động cả Docker thuần túy lẫn một Kubernetes gọn nhẹ trên máy cục bộ. Cuối cùng, chúng tôi sẽ trình bày một ví dụ nâng cao về container hóa: cách cài đặt một cơ sở dữ liệu Cassandra cục bộ trong môi trường Docker vừa được dựng lên.</p>
+
+<p>Đến cuối chương này, bạn sẽ có một hạ tầng được container hóa hoạt động đầy đủ, sẵn sàng để viết mã cho microservices. Quan trọng hơn, bạn sẽ có được hiểu biết vững chắc về các nguyên tắc mà chúng tôi sử dụng để thiết lập dự án sao cho việc phát triển trở nên dễ dàng và trực quan. Chúng tôi sẽ sử dụng các nguyên tắc này trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a> để bố trí mã nguồn đúng cách khi bước vào giai đoạn phát triển triển khai.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Coding Standards and the Developer’s Setup"><div class="sect1" id="idm46223571357000">
+<h1>Tiêu chuẩn lập trình và thiết lập dành cho nhà phát triển</h1>
+
+<p>Khi cố gắng đưa vào bất kỳ <a data-type="indexterm" data-primary="coding standards" id="idm46223571355496"/>tiêu chuẩn nào ở cấp tổ chức, sẽ rất hữu ích nếu làm rõ và thống nhất mục tiêu trước, để mọi người có thể hiểu được "vì sao" của quy trình trước khi được giới thiệu cơ chế thực tế, tức "cách làm" và "làm gì".</p>
+
+<p>Chúng tôi khuyến nghị bắt đầu với ba mục tiêu cấp cao sau:</p>
+<dl>
+<dt>Mã nguồn có thể được thiết lập trong thời gian ngắn</dt>
+<dd>
+<p>Có rất ít điều gây bực bội hơn việc tham gia một nhóm mới rồi phải mất hơn một tuần chỉ để thiết lập được một môi trường cho phép bạn bắt đầu viết mã trong codebase mới. Dù bạn gia nhập một công ty mới hay chỉ đơn giản là nhảy sang hỗ trợ một nhóm bên cạnh trong công việc hiện tại, hiếm có cách nào giết chết sự hào hứng và động lực nhanh hơn việc mắc kẹt ở câu hỏi "Rốt cuộc mình phải chạy nó thế nào?". Đáng tiếc là điều này xảy ra quá thường xuyên. Mục tiêu của chúng tôi là một nhà phát triển mới, chưa quen với code, phải có thể thiết lập được một microservice, hoặc một tập hợp microservice tạo thành một phân hệ logic, trong vòng chưa đầy một giờ.</p>
+</dd>
+<dt>Microservice mới có thể được tạo ra nhanh chóng, dễ dàng và nhất quán</dt>
+<dd>
+<p>Có rất nhiều phần boilerplate liên quan đến việc khởi động một dịch vụ mới. Bạn cần những mẫu mã phù hợp cho từng stack công nghệ được hỗ trợ, chẳng hạn Java, Go, Node, Python, v.v.; một thiết lập kiểm thử và quản lý dữ liệu tự động; các dependency như lưu trữ dữ liệu đã được cấu hình; và bộ khung của pipeline đã được bootstrap, chỉ mới kể vài thứ. Kịch bản tệ nhất là một nhà phát triển bắt đầu một microservice mới lại phải tự mình tìm ra tất cả các khía cạnh này từ đầu, hết lần này đến lần khác.</p>
+
+<p>Thực ra, một kịch bản còn tệ hơn là các nhà phát triển khác nhau lại thay đổi những khía cạnh đó một cách không cần thiết giữa các microservice tương tự nhau. Khi bạn có một codebase lớn, một trong những điều tác động mạnh nhất bạn có thể làm để tránh hỗn loạn là tạo ra sự nhất quán và quen thuộc. Cung cấp các template được suy nghĩ kỹ cho từng stack công nghệ chuẩn là một cách rất hiệu quả để đạt được sự nhất quán và chất lượng cao đó, đồng thời tăng tốc độ phát triển.</p>
+</dd>
+<dt>Kiểm soát chất lượng phải được tự động hóa</dt>
+<dd>
+<p>Việc thực thi các tiêu chuẩn chất lượng phát triển phần mềm của công ty phải được tự động hóa và không được để phụ thuộc vào sai sót của con người.</p>
+</dd>
+</dl>
+
+<p>Dựa trên các mục tiêu này, chúng ta có thể rút ra một bộ hướng dẫn nền tảng cho việc thiết lập môi trường làm việc của nhà phát triển.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="10 Workspace Guidelines for a Superior Developer Experience"><div class="sect2" id="ten-workspace-guidelines">
+<h2>10 nguyên tắc về môi trường làm việc cho trải nghiệm nhà phát triển vượt trội</h2>
+
+<p>Những hướng dẫn sau đây khá giàu tính quan điểm và dựa trên kinh nghiệm của các tác giả cuốn sách này. Chúng tôi khuyến nghị bạn sử dụng chúng như một điểm khởi đầu.</p>
+
+<p>Sau khi đã có kinh nghiệm xây dựng dịch vụ với các hướng dẫn này, chúng tôi kỳ vọng rằng bạn có thể cân nhắc điều chỉnh một số điểm để phù hợp hơn với nhu cầu và kinh nghiệm riêng của mình:</p>
+<ol>
+<li>
+<p><em>Chỉ để Docker là phụ thuộc duy nhất.</em></p>
+
+<p>Hội chứng "máy tôi chạy được" đang ám ảnh rất nhiều nhóm phát triển. Điều cốt yếu là <a data-type="indexterm" data-primary="workspace" data-secondary="Docker" data-tertiary="as dependency" id="idm46223571342072"/><a data-type="indexterm" data-primary="Docker" data-secondary="as dependency" id="idm46223571340824"/><a data-type="indexterm" data-primary="dependencies" data-secondary="Docker as" id="idm46223571339880"/>bất kỳ ai cũng có thể dễ dàng tạo ra cùng một môi trường. Vì vậy, các cách thiết lập thủ công, rườm rà cần phải bị loại bỏ.</p>
+
+<p>Chúng ta đang sống trong kỷ nguyên container hóa và các nhóm nên tận dụng điều đó. Để thiết lập mã nguồn, thứ duy nhất nên được kỳ vọng có mặt trên máy host là Docker runtime và Docker Compose, không gì khác. Không nên quan trọng việc máy đó chạy Windows, macOS hay Linux, cũng không nên phụ thuộc vào việc có những thư viện nào được cài sẵn. Chính những giả định như vậy là nguyên nhân dẫn đến các thiết lập bị hỏng. Ví dụ, không nên có kỳ vọng cố định rằng một phiên bản cụ thể của Python, Go, Java, v.v. phải tồn tại trên máy của nhà phát triển. Hướng dẫn thiết lập phải được tự động hóa, chứ không phải bị biến thành tài liệu trong các file <em>READ.ME</em>.</p>
+</li>
+<li>
+<p><em>Làm việc từ xa hay cục bộ không nên tạo khác biệt.</em></p>
+
+<p>Việc thiết lập phải hoạt động bất kể <a data-type="indexterm" data-primary="workspace" data-secondary="remote" id="idm46223571335784"/><a data-type="indexterm" data-primary="workspace" data-secondary="local" id="idm46223571334808"/><a data-type="indexterm" data-primary="remote workspace" id="idm46223571333864"/><a data-type="indexterm" data-primary="local workspace" id="idm46223571333192"/>một nhà phát triển chạy mã trên laptop của họ hay trên một máy chủ đám mây thông qua các plugin phát triển từ xa/SFTP của IDE. Điều này nên đúng theo mặc định; và nếu có trường hợp không thể làm được như vậy, lý do của ngoại lệ đó phải được biện minh và ghi lại rõ ràng.</p>
+</li>
+<li>
+<p><em>Đảm bảo môi trường làm việc sẵn sàng cho đa dạng công nghệ.</em></p>
+
+<p>Một thiết lập tốt phải <a data-type="indexterm" data-primary="workspace" data-secondary="heterogeneous-ready" id="idm46223571330456"/><a data-type="indexterm" data-primary="heterogeneous-ready workspace" id="idm46223571329448"/>hỗ trợ nhiều microservice được viết bằng nhiều ngôn ngữ lập trình khác nhau, sử dụng nhiều hệ thống lưu trữ dữ liệu khác nhau. Kiến trúc microservices giả định khả năng kết hợp các microservice dị thể; nó không có nghĩa chỉ là nhét một codebase vào một container hoặc chuẩn hóa toàn bộ lên một stack công nghệ duy nhất. Chúng tôi quá thường xuyên thấy các tài liệu marketing kiểu "[một framework microservices cho một ngôn ngữ nào đó]". Thực tế là, nếu 100% microservice của bạn đều được viết bằng Java thì có điều gì đó chưa ổn trong cách thiết lập, và không, bạn cũng không thể cười xòa nếu tất cả dịch vụ đều được viết bằng một ngôn ngữ "ngầu" như Go.</p>
+
+<p>Giờ thì, để nói cho rõ: điều đó hoàn toàn không có nghĩa là trong một môi trường microservices được quản lý tốt, bạn nên để mọi nhóm muốn chọn ngôn ngữ hay cơ sở dữ liệu nào cũng được. Hoàn toàn ngược lại: khi còn chưa chắc chắn, hãy thận trọng và chỉ dùng hai, tối đa là ba stack. Điểm mấu chốt ở đây là bạn <em>nên</em> có khả năng đưa vào một stack mới nếu thực sự cần, vì vậy trong thiết lập ví dụ của mình, bạn phải cho thấy rằng bạn thực sự làm được điều đó, tức là <a data-type="indexterm" data-primary="workspace" data-secondary="Rule of Twos" id="idm46223571326696"/><a data-type="indexterm" data-primary="Rule of Twos" id="idm46223571325720"/>triển khai nhiều hơn một stack.</p>
+<div data-type="tip"><h1>Rule of Twos</h1>
+<p>Chúng tôi nhận thấy việc chủ động thực hành tính dị thể trong một thiết lập microservices là một cách tiếp cận rất hiệu quả. Với bất kỳ thành phần quan trọng nào trong hệ thống, hãy bảo đảm rằng bạn đang sử dụng ít nhất hai lựa chọn thay thế trong production cùng một lúc, ngay cả khi bạn chỉ cần một. Bạn cũng nên bảo đảm rằng mình có hạ tầng để hỗ trợ hai lựa chọn đó dễ dàng như khi chỉ dùng một lựa chọn duy nhất. Chúng tôi gọi cách tiếp cận này là <a href="https://oreil.ly/_vYfU">"Rule of Twos"</a>.</p>
+</div>
+
+<p>Giả sử phần lớn API của bạn được viết bằng Node.js, một stack thực sự tuyệt vời và tối ưu I/O cho việc viết API. Hãy xem liệu một số API trong số đó có thể được triển khai bằng Go, Java hoặc Rust không, có thể vì chúng làm những công việc thiên về CPU mà Node không thực sự mạnh. Tuy nhiên, trong khi bạn thực hành tính dị thể, hãy chắc chắn rằng bạn giới hạn lựa chọn ngôn ngữ lập trình và hệ quản trị cơ sở dữ liệu trên toàn bộ ứng dụng ở mức hai hoặc ba. Nếu không, bạn có nguy cơ cao khiến các nhóm bị rối vì quá nhiều lựa chọn và tạo ra chi phí bảo trì rất lớn.</p>
+</li>
+<li>
+<p><em>Việc chạy một microservice đơn lẻ và/hoặc một phân hệ gồm nhiều dịch vụ phải dễ như nhau.</em></p>
+
+<p>Hãy tưởng tượng một hệ thống đặt chỗ của hãng hàng không <a data-type="indexterm" data-primary="workspace" data-secondary="microservices" data-tertiary="single" id="idm46223571319992"/><a data-type="indexterm" data-primary="workspace" data-secondary="microservices" data-tertiary="subsystem" id="idm46223571318744"/>được triển khai thành ba microservice.
+Một nhà phát triển phải có thể checkout riêng từng microservice để làm việc với nó, hoặc checkout cả một phân hệ gồm các microservice tương tác với nhau (ví dụ phần triển khai hệ thống đặt chỗ) để làm việc. Cả hai việc này đều phải thật dễ dàng.</p>
+</li>
+<li>
+<p><em>Nếu có thể, hãy chạy cơ sở dữ liệu cục bộ.</em></p>
+
+<p>Vì mục tiêu cô lập môi trường, <a data-type="indexterm" data-primary="workspace" data-secondary="databases" data-tertiary="local" id="idm46223571315592"/><a data-type="indexterm" data-primary="databases" data-secondary="local" id="idm46223571314344"/>đối với bất kỳ hệ quản trị cơ sở dữ liệu nào cũng nên có các lựa chọn cục bộ được Docker hóa, và
+việc chuyển sang các dịch vụ đám mây (ví dụ AWS) phải chỉ là một thay đổi cấu hình đơn giản. Ví dụ, <a href="https://min.io">MinIO</a> có thể hoạt động cục bộ như một lựa chọn thay thế tương đương cho S3. Nhiều lựa chọn thay thế cục bộ cho dịch vụ AWS có thể được cài đặt thông qua <a href="https://oreil.ly/Lyasd">trang GitHub này</a>.</p>
+</li>
+<li>
+<p><em>Thiết lập các nguyên tắc container hóa.</em></p>
+
+<p>Không phải mọi cách tiếp cận <a data-type="indexterm" data-primary="workspace" data-secondary="containerization" id="idm46223571310072"/><a data-type="indexterm" data-primary="containerization" id="idm46223571309096"/>container hóa đều ngang nhau. Ai cũng có thể nhét mã nguồn vào một Docker container một cách tùy tiện, nhưng để tạo ra một môi trường lập trình được container hóa thân thiện với nhà phát triển thì cần nhiều công sức hơn. Sau đây là một số nguyên tắc mà chúng tôi thấy là thiết yếu:</p>
+<ol>
+<li>
+<p>Mặc dù runtime của mã nguồn được container hóa, nhà phát triển vẫn phải có thể chỉnh sửa mã trên máy host (ví dụ laptop hoặc máy chủ phát triển EC2) bằng bất kỳ trình soạn thảo mã nào. Tuy nhiên, khi thực thi, toàn bộ quy trình chạy/kiểm thử/gỡ lỗi phải được thực hiện trong container.</p>
+</li>
+<li>
+<p>Vì Docker Compose nói chung có thể làm mọi thứ mà Dockerfile có thể làm, hai khái niệm này rất dễ bị nhà phát triển nhầm lẫn. Do đó, điều quan trọng là phải xác lập sự khác biệt giữa chúng. Chúng tôi khuyến nghị công thức sau:</p>
+
+<p>Dùng Dockerfile để build một <a data-type="indexterm" data-primary="Dockerfiles, images" id="idm46223571305128"/><a data-type="indexterm" data-primary="Docker Compose" id="idm46223571304424"/>image container, và dùng Docker Compose để chạy mọi thứ cục bộ, bao gồm cả các tích hợp phức tạp. Một image được build bằng Dockerfile phải có thể chạy trực tiếp trên Kubernetes, AWS ECR, Swarm hoặc bất kỳ runtime cấp production nào khác. Xin lưu ý rằng chỉ vì có thể làm như vậy không có nghĩa là image local/dev lúc nào cũng nhất thiết phải giống hệt image chạy trong production. Các nhóm thường tối ưu image thứ nhất cho tính tiện dụng và image thứ hai cho bảo mật cùng hiệu năng. Một ví dụ điển hình cho cách tiếp cận này là sử dụng multistage build.</p>
+</li>
+<li>
+<p>Phải sử dụng <a href="https://oreil.ly/qI1Dp">multistage build</a> trong Dockerfile để vừa hỗ trợ dùng image gọn nhẹ trong production, vừa hỗ trợ dùng image đầy đủ tính năng hơn cho phát triển cục bộ.</p>
+</li>
+<li>
+<p>Trải nghiệm nhà phát triển là yếu tố then chốt. Việc hỗ trợ hot-reload mã nguồn và/hoặc khả năng kết nối debugger ngay từ đầu là một tính năng quan trọng.</p>
+</li>
+
+</ol>
+</li>
+<li>
+<p><em>Thiết lập quy tắc để migration cơ sở dữ liệu diễn ra trơn tru.</em></p>
+
+<p>Việc quản lý cơ sở dữ liệu <a data-type="indexterm" data-primary="workspace" data-secondary="databases" data-tertiary="migrations" id="idm46223571298072"/><a data-type="indexterm" data-primary="databases" data-secondary="migrations" id="idm46223571296824"/><a data-type="indexterm" data-primary="migration, databases" id="idm46223571295880"/>và dữ liệu bên trong chúng theo cách hỗ trợ và tăng cường cộng tác nhóm là cực kỳ quan trọng. Mọi thay đổi đối với schema dữ liệu đều phải được mã hóa và áp dụng mà không có bước thủ công nào. Danh sách nguyên tắc dưới đây
+giúp việc quản lý dữ liệu trở nên trơn tru trong một môi trường microservices:</p>
+<ol>
+<li>
+<p>Mọi thay đổi đối với schema cơ sở dữ liệu đều phải được mã hóa dưới dạng một chuỗi các script "database migration". File migration nên được đặt tên và sắp xếp theo ngày.</p>
+</li>
+<li>
+<p>Database migration phải hỗ trợ cả thay đổi schema lẫn chèn dữ liệu mẫu.</p>
+</li>
+<li>
+<p>Việc chạy database migration phải là một phần của quá trình khởi động dự án (thông qua <code>Make start</code>, xem phần tiếp theo) và phải được thực thi bắt buộc.</p>
+</li>
+<li>
+<p>Việc chạy database migration phải được tự động hóa và nên là một phần của mọi bản build (tích hợp, build nhánh tính năng cho PR, v.v.).</p>
+</li>
+<li>
+<p>Phải có khả năng chỉ định migration nào chạy trên môi trường nào (hoặc migration nào có thể bị bỏ qua), để chẳng hạn các migration liên quan đến việc tạo dữ liệu mẫu có thể được bỏ qua trong production.</p>
+</li>
+<li>
+<p>Các quy tắc này áp dụng cho mọi hệ thống lưu trữ dữ liệu: quan hệ, dạng cột, NoSQL, v.v.</p>
+</li>
+<li>
+<p>Một số ví dụ:</p>
+
+<ul>
+<li>
+<p>Flyway có <a href="https://flywaydb.org">phần giới thiệu về database migration</a> này</p>
+</li>
+<li>
+<p>Xem <a href="https://oreil.ly/Vg41z">bài viết trên blog</a> này của Daniel Miranda và cộng sự về database migration cho Cassandra</p>
+</li>
+<li>
+<p>Hãy tham khảo <a href="https://oreil.ly/EqTxj">ví dụ</a> này về cách dùng db-migrate-sql của Node cho cơ sở dữ liệu MySQL</p>
+</li>
+</ul>
+</li>
+
+</ol>
+</li>
+<li>
+<p><em>Xác định một thực tiễn kiểm thử tự động thực dụng.</em></p>
+
+<p>Kiểm thử tự động là một chủ đề <a data-type="indexterm" data-primary="workspace" data-secondary="testing, automated" id="idm46223571279560"/><a data-type="indexterm" data-primary="testing" data-secondary="automated" id="idm46223571278584"/><a data-type="indexterm" data-primary="automated testing, workspace" id="idm46223571277640"/>phức tạp. Chúng tôi chắc chắn đã thấy cả hai cực của phổ này: một số nhóm bỏ cuộc hoàn toàn với kiểm thử tự động, và những nhóm khác thì quá cực đoan với test-driven development đến mức nó trở thành vấn đề. Chúng tôi ủng hộ một cách tiếp cận cân bằng và thực dụng đối với kiểm thử tự động, một cách tiếp cận cân bằng giữa trải nghiệm nhà phát triển với các chỉ số chất lượng và thích ứng được với sở thích cá nhân khác nhau của các nhà phát triển trong nhóm.</p>
+<ol>
+<li>
+<p>Viết test trước, viết test song hành khi code, hay viết test sau khi code đều là các thực hành chấp nhận được, miễn là toàn bộ mã đều có mức độ bao phủ hợp lý bằng những bài test có ý nghĩa trước khi được merge vào nhánh chính.</p>
+</li>
+<li>
+<p>Các nhóm nên sử dụng cách tiếp cận và framework kiểm thử phù hợp với thông lệ của nền tảng/stack mà họ đang phát triển (ví dụ JUnit cho Java). Các codebase cùng stack (ví dụ Go, Java, v.v.) nên dùng một cách tiếp cận thống nhất và các microservice viết cùng ngôn ngữ không nên làm mỗi nơi một kiểu tùy theo ai viết và viết khi nào.</p>
+</li>
+<li>
+<p>Việc sử dụng công cụ bên ngoài, đặc biệt cho kiểm thử chấp nhận hoặc kiểm thử hiệu năng, là hoàn toàn ổn nếu có lý do chính đáng, với một lưu ý quan trọng: những công cụ này (ví dụ Cucumber) phải được tích hợp đầy đủ vào mã nguồn/repository của chính dịch vụ và việc sử dụng, chạy chúng phải dễ dàng như một giải pháp native. Một nhà phát triển bình thường của dịch vụ không nên phải cài đặt thêm bất cứ thứ gì để bắt đầu, và phải có thể dễ dàng chạy test bằng một lệnh như <code>make test-all</code>.</p>
+</li>
+<li>
+<p>Cần dành sự chú ý và cẩn trọng đặc biệt cho các bài kiểm thử tự động vượt qua ranh giới của từng microservice riêng lẻ. Chúng sẽ phải được áp dụng ở cấp cao hơn (ví dụ một API gọi đến nhiều microservice, hoặc giao diện người dùng), hoặc trong một số trường hợp, có thể cần thiết lập một repository chuyên biệt để chứa phần điều phối và tự động hóa kiểm thử cho các bài test kiểu này.</p>
+</li>
+<li>
+<p>Cần thiết lập công cụ linting/phân tích tĩnh mã nguồn và áp dụng một cấu hình linter nhất quán với phong cách lập trình của tổ chức.</p>
+</li>
+
+</ol>
+</li>
+<li>
+<p><em>Phân nhánh và hợp nhất.</em></p>
+
+<p>Hầu như ai ngày nay cũng sử dụng một hình thức <a data-type="indexterm" data-primary="workspace" data-secondary="version control" data-tertiary="branching" id="idm46223571268024"/><a data-type="indexterm" data-primary="workspace" data-secondary="version control" data-tertiary="merging" id="idm46223571266952"/><a data-type="indexterm" data-primary="branching, version control" id="idm46223571265864"/><a data-type="indexterm" data-primary="merging, version control" id="idm46223571265256"/><a data-type="indexterm" data-primary="version control" data-secondary="merging" id="idm46223571264568"/><a data-type="indexterm" data-primary="version control" data-secondary="branching" id="idm46223571263624"/>hệ thống quản lý phiên bản mã nguồn. Mặc dù những điều cơ bản của phát triển dựa trên version control đã khá quen thuộc, vẫn đáng để chúng ta nhắc lại một số nguyên tắc cốt lõi về vệ sinh phân nhánh mà mọi thành viên trong nhóm nên tuân thủ để cộng tác suôn sẻ:</p>
+<ol>
+<li>
+<p>Mọi hoạt động phát triển đều nên diễn ra trên các nhánh tính năng và nhánh sửa lỗi.</p>
+</li>
+<li>
+<p>Không được phép merge một nhánh vào nhánh chính nếu toàn bộ test (bao gồm cả integration test chạy trong một cụm tích hợp tạm thời được dựng lên cho nhánh đó) chưa pass trên nhánh đó.</p>
+</li>
+<li>
+<p>Trạng thái chạy test (sau mỗi lần commit/push) phải dễ dàng hiển thị cho người review mã trong quá trình pull request.</p>
+</li>
+<li>
+<p>Lỗi linting/phân tích tĩnh phải ngăn mã được push lên nhánh, và/hoặc được merge vào nhánh chính.</p>
+</li>
+
+</ol>
+</li>
+<li>
+<p><em>Các target dùng chung cần được định nghĩa trong một makefile.</em></p>
+
+<p>Mỗi repository mã nguồn (và nói chung <a data-type="indexterm" data-primary="workspace" data-secondary="makefiles, targets" id="idm46223571256184"/><a data-type="indexterm" data-primary="makefiles, targets" id="idm46223571255208"/>nên có một repository cho mỗi microservice) đều nên có một makefile giúp bất kỳ ai cũng có thể làm việc với mã nguồn một cách dễ dàng, bất kể stack ngôn ngữ lập trình được dùng là gì. Makefile này nên có các target chuẩn, để dù nhà phát triển clone codebase nào, bằng ngôn ngữ nào, họ cũng biết rằng chỉ cần chạy <code>make run</code> là có thể khởi động codebase đó, và chạy <code>make test</code> là có thể chạy kiểm thử tự động.</p>
+
+<p>Chúng tôi khuyến nghị định nghĩa và triển khai các target chuẩn sau cho makefile của microservice:</p>
+
+<ul>
+<li>
+<p><code>start</code>: Chạy mã nguồn.</p>
+</li>
+<li>
+<p><code>stop</code>: Dừng mã nguồn.</p>
+</li>
+<li>
+<p><code>build</code>: Build mã nguồn (thường là một image container).</p>
+</li>
+<li>
+<p><code>clean</code>: Dọn sạch toàn bộ cache và chạy lại từ đầu.</p>
+</li>
+<li>
+<p><code>add-module</code></p>
+</li>
+<li>
+<p><code>remove-module</code></p>
+</li>
+<li>
+<p><code>dependencies</code>: Bảo đảm tất cả module được khai báo trong dependency management đều đã được cài đặt.</p>
+</li>
+<li>
+<p><code>test</code>: Chạy toàn bộ test và tạo báo cáo độ bao phủ.</p>
+</li>
+<li>
+<p><code>tests-unit</code>: Chỉ chạy unit test.</p>
+</li>
+<li>
+<p><code>tests-at</code>: Chỉ chạy kiểm thử chấp nhận.</p>
+</li>
+<li>
+<p><code>lint</code>: Chạy linter để bảo đảm mã nguồn tuân thủ phong cách lập trình theo các tiêu chuẩn đã định.</p>
+</li>
+<li>
+<p><code>migrate</code>: Chạy database migration.</p>
+</li>
+<li>
+<p><code>add-migration</code>: Tạo một database migration mới.</p>
+</li>
+<li>
+<p><code>logs</code>: Hiển thị log (từ bên trong container).</p>
+</li>
+<li>
+<p><code>exec</code>: Thực thi một lệnh tùy chỉnh bên trong container của mã nguồn.</p>
+</li>
+</ul>
+</li>
+
+</ol>
+
+<p>Hãy xem các microservice mẫu bằng <a href="https://oreil.ly/SY_ph">Go</a> và <a href="https://oreil.ly/IMfBj">Node</a> tuân theo mô hình nói trên, cũng như một thiết lập mẫu của một môi trường làm việc đa microservice tuân theo các khuyến nghị được định nghĩa trên <a href="https://oreil.ly/rJyPX">trang GitHub</a> này. Để thuận tiện cho bạn, chúng tôi cũng đã
+<a href="https://oreil.ly/kd2VT">xuất bản template này trên Github</a> ở định dạng Markdown để bạn có thể dễ dàng liên kết và tham chiếu đến nó từ các dự án của mình nếu cần.</p>
+
+<p>Hãy cùng nhìn lại những gì chúng ta đã học được cho đến lúc này. Trước hết, chúng ta nhận ra rằng trải nghiệm nhà phát triển là yếu tố tối quan trọng để xây dựng các nhóm vui vẻ, năng suất cao và có tính tự chủ. Tiếp theo, chúng ta xác định ba mục tiêu cốt lõi để đạt được trải nghiệm nhà phát triển vượt trội. Cuối cùng, nhưng không kém phần quan trọng, chúng ta đi sâu vào 10 nguyên tắc mà theo kinh nghiệm của chúng tôi có thể hiện thực hóa lời hứa của các mục tiêu này. Kết quả là một bản thiết kế có thể lặp lại để xây dựng các môi trường làm việc cho nhà phát triển cực kỳ thân thiện với người dùng cho các nhóm, bất kể stack công nghệ hay công cụ cụ thể được chọn là gì. Đây là nền tảng vững chắc giúp bạn làm hài lòng các nhóm của mình và tạo nên sự gắn kết sớm khi bắt đầu xây dựng một tổ chức microservices hoặc khi tái cấu trúc các nhóm hiện có sang mô hình microservices.</p>
+
+<p>Một trong những nguyên tắc cho phép chúng ta tạo ra các thiết lập phát triển lặp lại được, đáng tin cậy và thoải mái là container hóa mã nguồn bằng Docker. Ở phần tiếp theo, chúng ta sẽ đi sâu vào cách thiết lập một môi trường container hóa vững chắc trên các nền tảng chính như Linux, macOS và Windows.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Setting Up a Containerized Environment Locally"><div class="sect1" id="idm46223571228296">
+<h1>Thiết lập môi trường container hóa cục bộ</h1>
+
+<p>Ở phần đầu chương này, chúng ta đã <a data-type="indexterm" data-primary="containerization" id="idm46223571226600"/>đề cập rằng sự hiện diện của Docker (và có thể là <code>make</code> để chạy makefile) nên là kỳ vọng duy nhất cho một môi trường phát triển. Mọi thứ khác đều phải có thể được cài đặt dễ dàng từ nền tảng đó. Hãy xem chúng ta có thể có được một bộ công cụ Docker hoàn chỉnh, hoặc thậm chí Kubernetes một node nếu cần, trên các nền tảng khác nhau như thế nào.</p>
+
+<p>Cài đặt Docker trên một máy <a data-type="indexterm" data-primary="Docker" data-secondary="Linux installation" id="idm46223571224632"/><a data-type="indexterm" data-primary="Linux" data-secondary="Docker installation" id="idm46223571223624"/><a data-type="indexterm" data-primary="workspace" data-secondary="Docker" data-tertiary="Linux" id="idm46223571222680"/>Linux là <a href="https://oreil.ly/2jdq6">khá đơn giản</a>, nhưng còn những cách nào để có nó trên máy macOS hoặc Windows của bạn?</p>
+
+<p>Khi <a href="https://oreil.ly/gXDWu">Docker4Mac</a> và <a href="https://oreil.ly/oLSzW">Docker4Windows</a> ra đời, chúng thực sự mang tính cách mạng: đưa sức mạnh tiên tiến của Docker đến với những môi trường desktop mà phần lớn mọi người sử dụng hằng ngày. Sau đó, chúng cũng bắt đầu hỗ trợ
+Kubernetes, và mọi thứ dường như gần như hoàn hảo đối với một nhà phát triển web backend, đặc biệt là những người đang chuyển sang microservices.</p>
+
+<p>Cách dễ nhất để có Docker và Kubernetes trên macOS hoặc Windows của bạn vẫn là Docker4Mac và Docker4Windows. Tuy nhiên, vẫn có những lựa chọn khác có thể hấp dẫn với bạn.</p>
+
+<p>Một thực tế đáng tiếc là trải nghiệm <a data-type="indexterm" data-primary="Docker4Mac" id="idm46223571217368"/><a data-type="indexterm" data-primary="Docker4Windows" id="idm46223571216664"/>sử dụng Docker4Mac và
+Docker4Windows hằng ngày có thể khá thất thường. Ngay cả trên phần cứng tương đối hiện đại và mạnh mẽ, chúng tôi vẫn gặp tình trạng CPU sử dụng cao và hao pin. Với một số người, vấn đề khác có thể là Docker4Mac chỉ cho phép bạn cài một phiên bản Docker và một Kubernetes. Nếu bạn thử nghiệm nhiều, có thể bạn sẽ muốn có thêm tự do để vọc và làm hỏng mọi thứ.</p>
+
+<p>May mắn là vẫn có các lựa chọn thay thế. Lựa chọn hiển nhiên là cài các máy ảo của riêng bạn bằng VirtualBox hoặc các giải pháp thương mại thay thế. Tuy nhiên, kinh nghiệm của tôi là chúng còn nặng nề hơn cả các gói Docker4Mac/Win.</p>
+
+<p>Tuy vậy, một trong những lựa chọn thay thế thú vị hơn mà gần đây tôi bắt đầu thử nghiệm là <a href="https://multipass.run">Multipass</a>, một công cụ gọn gàng của Canonical, công ty tạo ra Ubuntu, cho phép bạn nhanh chóng khởi chạy các Docker host chạy Ubuntu trên macOS hoặc Windows của mình (thậm chí cả Linux). Multipass hỗ trợ một số nền tảng máy ảo khác nhau bên dưới, nhưng quan trọng nhất là mặc định nó dùng HyperKit trên macOS và Hyper-V trên Windows (cần Windows Pro!), theo kinh nghiệm của chúng tôi thì nhẹ hơn.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Installing Multipass"><div class="sect2" id="idm46223571213128">
+<h2>Cài đặt Multipass</h2>
+
+<p>Các bộ cài Multipass cho <a data-type="indexterm" data-primary="workspace" data-secondary="Multipass" id="workmulti"/><a data-type="indexterm" data-primary="Multipass installation" id="multiinstall"/>nhiều nền tảng khác nhau có thể được tải từ <a href="https://multipass.run">trang web</a>. Sau khi cài xong, hãy xem một số điều thú vị mà bạn có thể làm trên macOS hoặc Windows Subshell for Linux.</p>
+
+<p>Để khởi chạy một môi trường Ubuntu mới:</p>
+
+<pre data-type="programlisting">→ multipass launch -n docker
+Launched: docker
+→ multipass list
+Name                    State             IPv4             Image
+docker                  Running           192.168.64.3     Ubuntu 20.04 LTS</pre>
+
+<p>Theo mặc định, Multipass cấp phát 1 GB RAM, 5 GB dung lượng đĩa và 1 lõi CPU cho máy mới. Những giá trị này có thể là không đủ. Theo kinh nghiệm của chúng tôi, nếu bạn dùng kiểu như Node.js hoặc Python với MySQL thì 1 GB có thể ổn, nhưng nếu bắt đầu dùng các ứng dụng Java nặng cùng các hệ quản trị cơ sở dữ liệu nền Java như Cassandra, bạn sẽ cần nhiều bộ nhớ hơn. Chúng ta có thể ghi đè giá trị mặc định ngay khi khởi chạy:</p>
+
+<pre data-type="programlisting">→ multipass launch -m 4G -n dubuntu
+Launched: dubuntu
+→ multipass list
+Name                    State             IPv4             Image
+docker                  Running           192.168.64.3     Ubuntu 20.04 LTS
+dubuntu                 Running           192.168.64.4     Ubuntu 20.04 LTS
+
+→ multipass exec dubuntu -- bash
+
+ubuntu@dubuntu:~$ free -m
+              total        used        free      shared  buff/cache   available
+Mem:           3945          79        3640           0         225        3653</pre>
+<div data-type="warning" epub:type="warning"><h6>Cảnh báo</h6>
+<p>Mặc dù Multipass cho phép bạn chỉ định nhiều hơn một CPU bằng, chẳng hạn, <code>-c 2</code>, nhưng với chúng tôi điều này dẫn đến các container bị lỗi trên macOS. Chúng tôi cho rằng điều đó có thể liên quan đến các giới hạn của phần triển khai hypervisor, nhưng hãy thận trọng. Việc tăng bộ nhớ thì không có vấn đề gì.</p>
+</div>
+
+<p>Bạn cũng có thể tăng bộ nhớ cho một container hiện có mà không cần cài đặt lại toàn bộ những gì đã thiết lập. Bạn cần cẩn thận vì quy trình này có thể khá dễ phát sinh lỗi, nhưng nói chung bạn cần dừng tiến trình Multipass thông qua <code>launchctl</code> (nếu không nó sẽ ghi đè các thay đổi của bạn), chỉnh sửa file JSON cấu hình, rồi khởi chạy lại tiến trình Multipass:</p>
+
+<pre data-type="programlisting">→ sudo launchctl unload /Library/LaunchDaemons/com.canonical.multipassd.plist
+→ sudo vi "/var/root/Library/Application
+  Support/multipassd/multipassd-vm-instances.json"
+→ sudo launchctl load /Library/LaunchDaemons/com.canonical.multipassd.plist</pre>
+
+<p>File JSON <a data-type="indexterm" data-primary="JSON" data-secondary="multipassd-vm-instances.json" id="idm46223571199320"/>mà bạn sẽ chỉnh sửa (<em>multipassd-vm-instances.json</em>) sẽ trông đại loại như sau:</p>
+
+<pre data-type="programlisting">{
+    "dubuntu": {
+        "deleted": false,
+        "disk_space": "5368709120",
+        "mac_addr": "52:54:00:27:53:b4",
+        "mem_size": "4294967296",
+        "metadata": {
+        },
+        "mounts": [
+        ],
+        "num_cores": 1,
+        "ssh_username": "ubuntu",
+        "state": 4
+    }
+}</pre>
+
+<p>Như bạn có thể đoán, <code>mem_size</code> là giá trị bạn muốn ghi đè (tính bằng byte). Để an toàn hơn, chúng tôi khuyến nghị nhập một con số chia hết cho 1 GB. Vì 1 GB = 1024 * 1024 * 1024 = 1.073.741.824 byte, bạn nên dùng một số là bội số của <a data-type="indexterm" data-primary="workspace" data-secondary="Multipass" data-startref="workmulti" id="idm46223571195560"/><a data-type="indexterm" data-primary="Multipass installation" data-startref="multiinstall" id="idm46223571194312"/>1.073.741.824; ví dụ, để cấp 8 GB hãy nhập <code>1073741824 * 8 = 8589934592</code>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Entering the Container and Mapping Folders"><div class="sect2" id="idm46223571212504">
+<h2>Truy cập container và ánh xạ thư mục</h2>
+
+<p>Bạn có thể khởi chạy bất kỳ lệnh nào <a data-type="indexterm" data-primary="containers" data-secondary="commands, launching" id="containcomm"/><a data-type="indexterm" data-primary="folders, mapping" id="foldmap"/><a data-type="indexterm" data-primary="mapping" data-secondary="folders" id="mapfold"/>bên trong container của mình bằng một lệnh như <code>multipass exec &lt;containername&gt; -- &lt;command launched inside&gt;</code>. Ví dụ, để xem bộ nhớ trống trong container hoặc mở một bash shell, hãy dùng như sau:</p>
+
+<pre data-type="programlisting">→ multipass exec dubuntu -- free -m
+              total        used        free      shared  buff/cache   available
+Mem:           3945          77        3640           0         226        3654
+Swap:             0           0           0
+
+→ multipass exec dubuntu -- bash
+
+ubuntu@dubuntu:~$ ls -al
+total 36
+drwxr-xr-x 5 ubuntu ubuntu 4096 .
+drwxr-xr-x 3 root   root   4096 ..
+-rw------- 1 ubuntu ubuntu  107 .bash_history
+-rw-r--r-- 1 ubuntu ubuntu  220 .bash_logout
+-rw-r--r-- 1 ubuntu ubuntu 3771 .bashrc
+drwx------ 2 ubuntu ubuntu 4096 .cache
+drwx------ 3 ubuntu ubuntu 4096 .gnupg
+-rw-r--r-- 1 ubuntu ubuntu  807 .profile
+drwx------ 2 ubuntu ubuntu 4096 .ssh
+ubuntu@dubuntu:~$ exit
+exit
+→</pre>
+
+<p>Việc mở shell của container chính có thể được đơn giản hóa bằng cách
+chỉ định container nào bạn muốn đặt làm primary. Khi đó, bạn chỉ cần gõ <code>multipass shell</code>:</p>
+
+<pre data-type="programlisting">→ multipass set client.primary-name=dubuntu
+→ multipass shell
+
+ubuntu@dubuntu:~$</pre>
+
+<p>Để ánh xạ thư mục home của bạn (trên macOS) vào một thư mục trong container, bạn có thể chạy:</p>
+
+<pre data-type="programlisting">→ multipass mount $HOME dubuntu:/home/ubuntu/mac
+Enabling support for mounting -
+
+→ multipass exec dubuntu -- ls -ald mac
+drwxr-xr-x 1 ubuntu ubuntu 3936 mac
+→ multipass info dubuntu
+Name:           dubuntu
+State:          Running
+IPv4:           192.168.64.4
+Release:        Ubuntu 18.04.4 LTS
+Image hash:     2f6bc5e7d9ac (Ubuntu 18.04 LTS)
+Load:           0.00 0.08 0.07
+Disk usage:     1.1G out of 4.7G
+Memory usage:   81.9M out of 3.9G
+Mounts:         /Users/irakli =&gt; /home/ubuntu/mac
+→ multipass exec dubuntu -- ls -al mac
+total 240120
+drwxr-xr-x 1 ubuntu ubuntu      3936 .
+drwxr-xr-x 6 ubuntu ubuntu      4096 ..
+-rw-r--r-- 1 ubuntu ubuntu     10244 .DS_Store
+drwx------ 1 ubuntu ubuntu        64 .Trash
+drwxr-xr-x 1 ubuntu ubuntu       512 .atom
+drwxr-xr-x 1 ubuntu ubuntu       128 .aws</pre>
+
+<p>Giờ đây khi đã có một môi trường Linux ảo hóa hoạt động tốt thông qua Multipass, việc cài Docker (hoặc thậm chí Kubernetes cục bộ) trở nên khá dễ dàng. Hãy xem ở phần tiếp theo cách chúng ta sẽ thực hiện việc đó như thế nào.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Installing Docker"><div class="sect1" id="idm46223571227704">
+<h1>Cài đặt Docker</h1>
+
+<p>Bạn có thể cài Docker <a data-type="indexterm" data-primary="Docker" data-secondary="containers in" id="dockerinst"/><a data-type="indexterm" data-primary="containers" data-secondary="Docker, installing" id="containDock"/>bên trong một container bằng cách làm theo quy trình cài đặt Docker thông thường:</p>
+
+<pre data-type="programlisting">→ multipass shell
+
+ubuntu@dubuntu:~$ sudo apt-get update &amp;&amp; sudo apt-get upgrade -y
+ubuntu@dubuntu:~$ sudo apt-get install build-essential -y
+
+# Sanity Check
+ubuntu@dubuntu:~$ sudo apt-get remove docker \
+                  docker-ce-cli docker-engine docker.io containerd runc
+
+# Install Docker and Docker Compose
+ubuntu@dubuntu:~$ sudo snap install docker
+ubuntu@dubuntu:~$ echo 'export PATH=/snap/bin:$PATH' &gt;&gt; ~/.bashrc
+ubuntu@dubuntu:~$ source ~/.bashrc</pre>
+
+<p>Sau khi hoàn tất các bước này, bạn sẽ có một bản cài Docker hoạt động được, nhưng
+nó chỉ có thể chạy dưới quyền root (thông qua <code>sudo</code>), điều này vừa không an toàn vừa
+bất tiện. Để khắc phục, bạn nên cấp cho người dùng mặc định không có đặc quyền
+(<code>ubuntu</code> trong trường hợp cài đặt này) quyền truy cập nhóm vào Docker, như minh họa trong đoạn mã sau. Lưu ý rằng bạn phải đăng xuất khỏi Ubuntu rồi đăng nhập lại để thay đổi này có hiệu lực:</p>
+
+<pre data-type="programlisting">ubuntu@dubuntu:~$ sudo groupadd docker
+ubuntu@dubuntu:~$ sudo usermod -aG docker $USER
+ubuntu@dubuntu:~$ exit
+logout
+→ multipass restart
+→ multipass shell
+
+ubuntu@dubuntu:~$ docker ps
+CONTAINER ID   STATUS   IMAGE   PORTS   NAMES
+
+ubuntu@dubuntu:~$ docker version
+Client:
+ Version:           19.03.11
+ API version:       1.40
+
+ubuntu@dubuntu:~$ $ docker-compose --version
+docker-compose version 1.25.5, build unknown</pre>
+
+<p>Để kiểm thử môi trường Docker mới của mình, giờ chúng ta sẽ dùng nó để khởi chạy một cơ sở dữ liệu MySQL bằng Docker Compose.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Testing Docker"><div class="sect2" id="idm46223571166440">
+<h2>Kiểm thử Docker</h2>
+
+<p>Trước tiên, hãy tạo một file <em>mysql-stack.yml</em> với các <a data-type="indexterm" data-primary="Docker" data-secondary="testing" id="docktest"/><a data-type="indexterm" data-primary="testing" data-secondary="Docker" id="testDock"/>chỉ dẫn cho Docker Compose như sau:</p>
+
+<pre data-type="programlisting">version: '3.1'
+
+services:
+  db:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootPass
+    ports:
+      - 33060:3306</pre>
+
+<p>Cần lưu ý rằng, theo mặc định, file này sẽ được đặt tên là <em>docker-compose.yml</em>, nhưng chúng ta <em>có thể</em> dùng tên tùy chỉnh miễn là chỉ rõ tên đó bằng cờ <code>-f</code> đặc biệt khi thực thi Docker Compose.
+Bây giờ, hãy khởi chạy MySQL trong một Docker container bằng lệnh sau:</p>
+
+<pre data-type="programlisting">ubuntu@dubuntu:~$ docker-compose -f mysql-stack.yml up -d
+
+ubuntu@dubuntu:~$ docker ps
+CONTAINER ID   STATUS         IMAGE   PORTS
+e08f6f072c89   Up 3 seconds   mysql   33060/tcp, 0.0.0.0:33060-&gt;3306/tcp</pre>
+
+<p>Đến thời điểm này, bạn đã có một thiết lập Docker và Docker Compose hoạt động. Ở phần tiếp theo, chúng tôi sẽ chỉ cho bạn cách dùng các công cụ này để dễ dàng cài các thành phần nâng cao hơn, chẳng hạn một cơ sở dữ liệu Cassandra<a data-type="indexterm" data-primary="Docker" data-secondary="testing" data-startref="docktest" id="idm46223571157528"/><a data-type="indexterm" data-primary="testing" data-secondary="Docker" data-startref="testDock" id="idm46223571156280"/> cục bộ, nếu bạn cần.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Advanced Local Docker Usage: Installing Cassandra"><div class="sect1" id="idm46223571154760">
+<h1>Sử dụng Docker cục bộ nâng cao: cài đặt Cassandra</h1>
+
+<p>Chúng ta đã <a data-type="indexterm" data-primary="Docker" data-secondary="Cassandra" id="dockCass"/><a data-type="indexterm" data-primary="Cassandra" id="cass"/>thảo luận về cách dùng Docker Compose để chạy một cơ sở dữ liệu MySQL được container hóa, nhưng giờ hãy xem một ví dụ phức tạp hơn đôi chút về việc chạy cơ sở dữ liệu Cassandra trong container. Với mức độ phổ biến và tính linh hoạt của Cassandra, rất có thể ở một thời điểm nào đó trong hành trình phát triển microservices cloud native, bạn sẽ phải làm việc với nó.</p>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Cassandra cần nhiều hơn mức RAM mặc định 1 GB, vì vậy hãy bảo đảm container Multipass của bạn có nhiều bộ nhớ hơn (ví dụ 6-8 GB).</p>
+</div>
+
+<p>Trước tiên, hãy tạo một file <em>docker-compose.yml</em> với nội dung sau ở bất kỳ đâu trong container:</p>
+
+<pre data-type="programlisting">version: '3'
+
+services:
+  cassandra-seed:
+    container_name: cassandra-seed
+    image: cassandra:3.11
+    ports:
+      - "9042:9042"   # Native protocol clients
+      # - "7199:7199"   # JMX
+      # - "9160:9160"   # Thrift clients
+    volumes:
+      - local_cassandra_data_seed:/var/lib/cassandra
+
+volumes:
+  local_cassandra_data_seed:</pre>
+
+<p>Sau đó chạy nó và kiểm tra xem mọi thứ có hoạt động không:</p>
+
+<pre data-type="programlisting">ubuntu@dubuntu:~/cassandra$ docker-compose up -d
+Creating network "cassandra_default" with the default driver
+Creating cassandra-seed ... done
+ubuntu@dubuntu:~/cassandra$ docker-compose ps
+Name                   Command               State             Ports
+-------------------------------------------------------------------------------
+cassandra-seed   docker-entrypoint.sh cassa ...   Up      7000/tcp, 7001/tcp
+
+ubuntu@dubuntu:~/cassandra$ docker exec -it cassandra-seed cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 3.11.6 | CQL spec 3.4.4 | Native protocol v4]
+Use HELP for help.
+cqlsh&gt; DESCRIBE keyspaces;</pre>
+
+<p>Lệnh cuối cùng, <code>DESCRIBE keyspaces</code>, sẽ hiển thị toàn bộ keyspace hiện có trong bản cài Cassandra vừa được tạo. Đến thời điểm này, bạn đã có một thiết lập Cassandra cục bộ hoạt động đầy đủ. Tiếp theo, chúng tôi sẽ chỉ cho bạn cách <a data-type="indexterm" data-primary="Docker" data-secondary="Cassandra" data-startref="dockCass" id="idm46223571144488"/><a data-type="indexterm" data-primary="Cassandra" data-startref="cass" id="idm46223571143240"/>cài một môi trường Kubernetes cục bộ khi bạn cần.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Installing Kubernetes"><div class="sect1" id="idm46223571142040">
+<h1>Cài đặt Kubernetes</h1>
+
+<p>Trong hầu hết các trường hợp, Docker Compose <a data-type="indexterm" data-primary="Kubernetes" data-secondary="installing" id="kuberinst"/>đã cung cấp đủ khả năng để điều phối nhiều thành phần và microservice khác nhau tạo nên toàn bộ ứng dụng của bạn. Với các trường hợp nâng cao hơn, Kubernetes là một giải pháp phổ biến, với phạm vi chức năng rộng hơn rất nhiều. Tuy nhiên, nó cũng đi kèm mức độ phức tạp cao hơn tương xứng.</p>
+<div data-type="note" epub:type="note"><h1>Tránh dùng Kubernetes cục bộ trừ khi thật sự cần</h1>
+<p>Nói chung, chúng tôi không khuyến nghị dùng Kubernetes cục bộ cho công việc lập trình hằng ngày. Docker và Docker Compose có thể hoàn thành hầu hết các tác vụ liên quan đến container hóa một cách dễ dàng hơn, đồng thời có công cụ trực quan hơn để build image container. Kubernetes vượt trội trong việc điều phối cả một đội hình container runtime, điều hiếm khi cần trong môi trường phát triển nhưng lại cực kỳ quan trọng ở các môi trường như production, preproduction, staging, kiểm thử hiệu năng, v.v. Tuy nhiên, trong một số tình huống, bạn có thể muốn dùng Kubernetes cục bộ, đặc biệt cho các bài kiểm thử có mục tiêu cụ thể.</p>
+</div>
+
+<p>Bạn không thể đơn giản cài bản phân phối Kubernetes chính thức trên một
+máy đơn lẻ. Kubernetes được thiết kế để triển khai trên một cụm máy chủ. Tuy nhiên,
+có nhiều dự án phụ rất hay giúp bỏ qua yêu cầu đó và tạo ra một thiết lập Kubernetes hoạt động trên một máy duy nhất. Lựa chọn mặc định, do chính cộng đồng duy trì Kubernetes tạo ra, là <a href="https://oreil.ly/O9SON">Minikube</a>. Tuy nhiên, đó không phải lựa chọn duy nhất. Hai lựa chọn khác mà chúng tôi yêu thích nhờ sự đơn giản và độ tin cậy là <a href="https://k3s.io">k3s của Rancher</a> và <a href="https://microk8s.io">MicroK8s của Canonical</a>.</p>
+
+<p>Để cài Kubernetes cục bộ bằng k3s, dùng các lệnh sau:</p>
+
+<pre data-type="programlisting">ubuntu@dubuntu:~$ curl -sfL https://get.k3s.io | sh -
+[INFO]  Finding release for channel stable
+[INFO]  Using v1.17.4+k3s1 as release
+[INFO]  Downloading hash \
+https://github.com/rancher/k3s/releases/download/v1.17.4+k3s1/...
+[INFO]  Downloading binary \
+https://github.com/rancher/k3s/releases/download/v1.17.4+k3s1/k3s
+[INFO]  Verifying binary download
+[INFO]  Installing k3s to /usr/local/bin/k3s
+...
+
+ubuntu@dubuntu:~$ sudo k3s kubectl get nodes
+NAME      STATUS   ROLES    AGE    VERSION
+dubuntu   Ready    master   104s   v1.17.4+k3s1</pre>
+
+<p>Với MicroK8s, các bước tương tự nhưng chúng ta cũng sẽ thêm người dùng hiện tại vào một nhóm cụ thể và cần đăng nhập lại giống như đã làm với Docker:</p>
+
+<pre data-type="programlisting">ubuntu@dubuntu:~$ sudo snap install microk8s --classic
+microk8s v1.18.1 from Canonical✓ installed
+ubuntu@dubuntu:~$ sudo usermod -a -G microk8s $USER
+ubuntu@dubuntu:~$ sudo chown -f -R $USER ~/.kube
+ubuntu@dubuntu:~$ exit
+logout
+→ multipass shell
+
+ubuntu@dubuntu:~$ microk8s.kubectl get services --all-namespaces
+NAMESPACE  NAME        TYPE       CLUSTER-IP    PORT(S)  AGE
+default    kubernetes  ClusterIP  10.152.183.1  443/TCP  3m22s</pre>
+
+<p>Và đó gần như là tất cả những gì bạn cần để có một thiết lập Kubernetes hoạt động trên máy phát triển.</p>
+
+<p>Như chúng tôi đã đề cập ở đầu phần này, một môi trường Kubernetes cài sẵn không có công cụ để build image container. Nó yêu cầu bạn cung cấp URI của một image đã được build sẵn từ registry. Hạn chế này khiến Kubernetes trở thành lựa chọn khá cồng kềnh cho phát triển chủ động, vì không có một lời giải rõ ràng để hỗ trợ chu trình build-run-test mượt mà. Kubernetes thực sự phù hợp hơn như một công cụ điều phối tinh vi cho các môi trường ngoài phát triển (QA, staging, preprod,
+prod, v.v.). Dù vậy, vài năm sau khi Kubernetes ra đời, một bộ công cụ mã nguồn mở tên là <a href="https://skaffold.dev">Skaffold</a> đã được phát triển để đưa việc build image container thành một phần có thể cắm vào vòng đời của Kubernetes.</p>
+
+<p>Chúng tôi sẽ không sử dụng Kubernetes cục bộ trong phần lớn các ví dụ lập trình của cuốn sách này, nhưng nếu bạn muốn xem một dự án mã nguồn mở mẫu triển khai kiểu thiết lập như vậy, hãy tham khảo repository <a href="https://oreil.ly/WHcqP">Skaffold microservices</a> mà chúng tôi đã tạo ra <a data-type="indexterm" data-primary="Kubernetes" data-secondary="installing" data-startref="kuberinst" id="idm46223571126424"/>cho mục đích minh họa.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Summary"><div class="sect1" id="idm46223571141368">
+<h1>Tóm tắt</h1>
+
+<p>Trong chương này, chúng ta đã phác thảo các mục tiêu cho việc thiết kế một môi trường làm việc thân thiện với nhà phát triển nhằm bảo đảm rằng không gian nơi phần lớn nhà phát triển dành phần lớn thời gian của mình (ngoại trừ có lẽ là các cuộc họp) là một nơi thoải mái, đáng tin cậy và hiệu quả. Dựa trên các mục tiêu đó, chúng ta đã giới thiệu 10 nguyên tắc để xây dựng môi trường làm việc hiệu quả cho nhà phát triển và minh họa một số bước để đặt nền móng container hóa cho nhiều hệ điều hành phổ biến: macOS, Windows và Ubuntu Linux.</p>
+
+<p>Những khái niệm và kỹ năng này sẽ giúp bạn tạo ra các môi trường cộng tác thú vị cho các nhóm phát triển của mình, biến quá trình on-boarding nhà phát triển mới thành một trải nghiệm dễ chịu và thúc đẩy các thực hành lập trình tốt. Trong <a data-type="xref" href="ch09.html#ch-developing-microservices">Chương 9</a>, chúng ta sẽ quay lại các mục tiêu và nguyên tắc được trình bày ở đây khi minh họa chi tiết hơn cách chúng ta tổ chức mã nguồn và cấu trúc dự án nền tảng.</p>
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>

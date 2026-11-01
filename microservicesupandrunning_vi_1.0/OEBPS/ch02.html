@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Thiết kế Mô hình Vận hành Microservices</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 2. Designing a Microservices Operating Model"><div class="chapter" id="ch-designing-ms-op-model">
+<h1><span class="label">Chương 2. </span>Thiết kế Mô hình Vận hành Microservices</h1>
+
+
+<p>Trong cuốn sách này, chúng ta sẽ xây dựng một ứng dụng dựa trên microservices. Để làm được điều đó, chúng ta sẽ thiết kế và xây dựng các microservice cũng như hạ tầng và công cụ cần thiết để hỗ trợ chúng. Tuy nhiên, sự thật là để thành công với microservices, chỉ viết mã và triển khai là chưa đủ. Muốn thực sự thành công, bạn cần có đúng con người, đúng cách làm việc và đúng nguyên tắc để toàn bộ hệ thống vận hành trơn tru. Đó là lý do chúng ta muốn bắt đầu hành trình của mình bằng việc thiết kế một mô hình vận hành tổng quát cho ứng dụng.</p>
+
+<p>Một <em>mô hình vận hành</em> là tập hợp <a data-type="indexterm" data-primary="operating model" data-secondary="overview" id="idm46223578755560"/>con người, quy trình và công cụ nằm bên dưới hệ thống của bạn. Nó định hình mọi quyết định và công việc mà bạn thực hiện khi xây dựng phần mềm. Ví dụ, một mô hình vận hành có thể xác định trách nhiệm của các nhóm. Nó cũng có thể xác định cơ chế quản trị đối với việc ra quyết định và thực thi công việc.</p>
+
+<p>Bạn có thể xem mô hình vận hành như “hệ điều hành” của giải pháp. Mọi công việc cần thiết để xây dựng microservices đều diễn ra trên nền các cấu trúc nhóm, quy trình và ranh giới mà bạn xác định. Trên thực tế, mô hình vận hành có thể có phạm vi rất rộng và mức độ chi tiết rất cao. Nhưng đối với phần xây dựng của chúng ta, chúng ta sẽ thu hẹp phạm vi và tập trung vào những phần quan trọng nhất của một hệ thống microservices, đó là cách các nhóm được thiết kế và cách họ làm việc với nhau.</p>
+
+<p>Đó là nội dung chúng ta sẽ đề cập trong chương này: mối quan hệ giữa các nhóm và việc triển khai microservices. Chúng ta sẽ giới thiệu một công cụ tên là Team Topologies và đến cuối chương, chúng ta sẽ có một thiết kế dựa trên đội nhóm để dùng làm nền tảng cho phần còn lại của quá trình xây dựng.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Bạn không cần thực sự tập hợp đúng những con người và đội nhóm mà chúng ta đã xác định để có thể theo dõi mô hình microservices “up and running” này.</p>
+</div>
+
+<p>Hãy bắt đầu bằng việc xem tại sao các nhóm và thiết kế nhóm lại quan trọng đến vậy ngay từ đầu.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Why Teams and People Matter"><div class="sect1" id="idm46223578750616">
+<h1>Vì sao Nhóm và Con người Lại Quan trọng</h1>
+
+<p>Mô hình mà chúng ta đang dùng trong cuốn <a data-type="indexterm" data-primary="operating model" data-secondary="teams and" id="idm46223582280200"/><a data-type="indexterm" data-primary="operating model" data-secondary="people and" id="idm46223582279224"/>sách này chủ yếu quan tâm đến các quyết định về công nghệ và công cụ. Nhưng chỉ riêng công nghệ sẽ không mang lại cho bạn giá trị cần có từ một hệ thống microservices. Công nghệ là quan trọng. Lựa chọn công nghệ tốt giúp bạn dễ làm những việc vốn có thể khó đến mức gần như không khả thi. Ở trạng thái tốt nhất, công nghệ mở ra cánh cửa và khai mở những cơ hội mới. Tuy vậy, bản thân nó không có ích nếu đứng một mình.</p>
+
+<p>Bạn có thể có những công cụ và nền tảng tốt nhất thế giới, nhưng bạn vẫn sẽ thất bại nếu không có đúng văn hóa và tổ chức để sử dụng chúng. Mục tiêu mà chúng ta muốn đạt tới trong mô hình này là đặt công nghệ tốt vào tay những nhóm độc lập, hoạt động hiệu quả. Vì vậy, chúng ta cần bắt đầu bằng việc xem xét các kiểu nhóm và cấu trúc nào sẽ phù hợp nhất với mô hình mà chúng ta sắp phát triển.</p>
+
+<p>Trong một hệ thống microservices, văn hóa <a data-type="indexterm" data-primary="microservices system" data-secondary="culture" id="idm46223582276488"/><a data-type="indexterm" data-primary="microservices system" data-secondary="team design and" id="idm46223582275512"/>và thiết kế nhóm có ý nghĩa rất lớn. Qua quá trình nghiên cứu cho cuốn sách này và từ chính kinh nghiệm triển khai của mình, chúng tôi đã học được một sự thật quan trọng: con người và quy trình là các yếu tố thành công mang tính sống còn. Một triển khai microservices chỉ thực sự có giá trị khi nó trao cho bạn sự tự do để thay đổi một cách dễ dàng và nhanh chóng. Nhưng trên thực tế, thay đổi lại là hệ quả từ năng lực ra quyết định của tổ chức bạn. Nếu bạn không thể đưa ra các quyết định chất lượng một cách nhanh chóng, bạn sẽ rất khó khai thác được giá trị từ microservices. Nó giống như việc chế tạo một chiếc xe đua với động cơ quá tệ. Dù chiếc xe có được lắp ráp tốt đến đâu, nó cũng sẽ không bao giờ chạy như đáng lẽ phải chạy.</p>
+
+<p>Ý tưởng rằng thiết kế nhóm và văn hóa là quan trọng không phải điều mới mẻ. Mel Conway đã diễn đạt rất hùng hồn <a data-type="indexterm" data-primary="Conway, Mel" id="idm46223582273272"/>tác động của cấu trúc nhóm lên thiết kế hệ thống trong bài viết nay đã rất nổi tiếng của ông, <a href="https://oreil.ly/oRyx0">“How Do Committees Invent?”</a> Những quan sát sâu sắc của Mel Conway sau đó đã dẫn tới một cách diễn đạt lại luận điểm của ông còn nổi tiếng hơn nữa, được gọi là “Định luật Conway”:</p>
+<blockquote>
+<p>Bất kỳ tổ chức nào thiết kế ra một hệ thống (theo nghĩa rộng) đều sẽ tạo ra một thiết kế có cấu trúc là bản sao của cấu trúc giao tiếp trong tổ chức đó.</p>
+<p data-type="attribution">Được gán cho Fred Brooks</p>
+</blockquote>
+
+<p>Conway cho chúng ta biết rằng đầu ra của một tổ chức phản chiếu cách con người và các nhóm trong tổ chức đó giao tiếp. Ví dụ, hãy hình dung một nhóm microservices buộc phải tham vấn một nhóm chuyên gia cơ sở dữ liệu tập trung mỗi khi họ cần thay đổi mô hình dữ liệu. Khả năng cao là mô hình dữ liệu và cách hiện thực dữ liệu trong hệ thống được tạo ra cũng sẽ bị tập trung hóa. Hệ thống cuối cùng sẽ trở nên giống với mô hình tổ chức và phối hợp.</p>
+
+<p>Điểm rút ra ở đây là con người trong một hệ thống microservices thực sự quan trọng. Cách họ ra quyết định, thực hiện công việc và giao tiếp với nhau có tác động rất lớn đến hệ thống được tạo ra. Nói một cách tổng quát, có ba 
+<span class="keep-together">yếu tố con người</span> có ảnh hưởng lớn nhất đến một hệ thống microservices: quy mô nhóm, kỹ năng của nhóm và sự phối hợp liên nhóm. Hãy cùng xem kỹ hơn từng yếu tố, bắt đầu từ quy mô.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Team Size"><div class="sect2" id="idm46223582515368">
+<h2>Quy mô Nhóm</h2>
+
+<p>Từ “micro” trong microservices <a data-type="indexterm" data-primary="teams" data-secondary="size" id="tsize"/>hàm ý rằng quy mô là quan trọng và càng nhỏ càng tốt. Thành thật mà nói, đó là một cách đơn giản hóa hơi quá mức. Nhưng sự thật vẫn là: xây dựng những dịch vụ nhỏ hơn và có thể triển khai được là một phần quan trọng để thành công với microservices. Và hóa ra quy mô của những nhóm xây dựng các dịch vụ đó cũng cực kỳ quan trọng.</p>
+
+<p>Nếu bạn có quá nhiều người trong một nhóm, họ sẽ phải dành nhiều thời gian hơn để giao tiếp với nhau. Sự phối hợp nội bộ đó sẽ làm nhóm chậm lại, dẫn đến việc phân phối thay đổi chậm hơn. Nếu bạn có quá ít người, bạn sẽ không có đủ đầu óc và bàn tay để hoàn thành công việc. Việc “định cỡ phù hợp” cho nhóm là một phần quan trọng trong thiết kế hệ thống của bạn. Dù không có một con số cụ thể nào phù hợp cho mọi người trong mọi hoàn cảnh, kinh nghiệm thực tế và các nghiên cứu về quy mô nhóm đã dần hình thành thành thông lệ được chấp nhận rộng rãi.</p>
+
+<p>Bill Gore, đồng sáng lập <a data-type="indexterm" data-primary="Gore, Bill" id="idm46223582510552"/>công ty Gore-Tex W. L. Gore, đã giới hạn quy mô các nhóm trong công ty để giữ cho chúng hiệu quả. Để làm được điều đó, ông đặt ra một giới hạn quy mô ngay từ đầu: mọi người trong nhóm phải có <a href="https://oreil.ly/wduQE">mối quan hệ cá nhân</a> với nhau. Khi một nhóm trở nên lớn đến mức các thành viên không còn biết nhau, đơn vị đó đã phát triển quá lớn.</p>
+
+<p>Nhà nhân học Robert Dunbar, <a data-type="indexterm" data-primary="Dunbar, Robert" id="idm46223582508232"/>trong các nghiên cứu của mình về hành vi xã hội của tinh tinh, đã quan sát thấy quy mô bầy đàn của tinh tinh có tương quan với kích thước não bộ của chúng. Từ việc ngoại suy những phát hiện này sang hiểu biết của mình về não bộ con người, ông đã thiết lập ra một tập hợp các quy mô nhóm dành cho con người. <a href="https://oreil.ly/-DbyT">Số Dunbar</a> cho rằng chúng ta chỉ có thể duy trì một cách thoải mái 150 mối quan hệ ổn định, dựa trên kích thước bộ não của mình. Dunbar cũng xác định rằng con người chỉ có thể duy trì khoảng 5 mối quan hệ thân mật trong gia đình và khoảng 15 người bạn thực sự tin cậy.</p>
+
+<p>Có lẽ nổi tiếng nhất, CEO Amazon <a data-type="indexterm" data-primary="Bezos, Jeff" id="idm46223582505768"/>Jeff Bezos đã đưa cho chúng ta <a href="https://oreil.ly/ccT85">“quy tắc hai chiếc pizza”</a>. Theo đó, một nhóm tại Amazon nên nhỏ đến mức chỉ cần hai chiếc pizza là có thể cho cả nhóm ăn no. Dù các chi tiết cụ thể về kích thước pizza hay sức ăn của từng thành viên không thật rõ ràng, một nhóm hai pizza có lẽ sẽ rơi vào khoảng 5 đến 15 người mà Dunbar mô tả và có cơ hội cao duy trì được nguyên tắc quan hệ cá nhân mà Gore đề xuất.</p>
+
+<p>Tất cả những câu chuyện này đều chỉ tới một giới hạn về quy mô dựa trên khả năng giao tiếp hiệu quả giữa con người với nhau. Kinh nghiệm và nghiên cứu của chúng tôi cũng phù hợp với trực giác đó. Để giữ cho tốc độ thay đổi ở mức cao, chúng ta cần giới hạn quy mô của các nhóm trong hệ thống. Trong mô hình microservices của mình, chúng ta sẽ giữ quy mô nhóm ở đâu đó trong khoảng từ năm đến tám người.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223582502904">
+<h5>Quyết định chính: Cần Giới hạn Quy mô Nhóm</h5>
+<p>Các nhóm thực hiện công việc trong hệ thống của chúng ta không nên có quá tám người mỗi nhóm.</p>
+</div></aside>
+
+<p>Giữ quy mô nhóm nhỏ sẽ giúp chúng ta hạn chế lượng tương tác nội bộ cần thiết. Nhưng điều đó cũng kéo theo một hệ quả dây chuyền. Nhóm nhỏ hơn thường đồng nghĩa với nhiều nhóm hơn. Vì vậy, chúng ta sẽ cần cẩn thận trong cách thiết kế phần còn lại của hệ thống. Có các nhóm nhỏ sẽ chẳng giúp ích gì nếu họ phải dành toàn bộ thời gian để phối hợp với nhau. Để tránh điều đó, chúng ta cần cho phép công việc độc lập và tự chủ ở mức cao nhất có thể mà vẫn an toàn.</p>
+
+<p>Một tác dụng phụ khác của việc thu nhỏ nhóm là nó giới hạn số lượng chuyên gia mà chúng ta có thể có trong mỗi nhóm. Khi nhóm có ít người hơn, chúng ta cần bảo đảm rằng tổng thể nhóm vẫn có đủ tài năng để tạo ra đầu ra chất lượng. Đó là lý do vì sao chúng ta cần xem xét <a data-type="indexterm" data-primary="teams" data-secondary="size" data-startref="tsize" id="idm46223582499928"/>cách phân bổ con người vào các nhóm dưới góc độ kỹ năng.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Team Skills"><div class="sect2" id="idm46223582514808">
+<h2>Kỹ năng Nhóm</h2>
+
+<p>Một nhóm chỉ có thể giỏi <a data-type="indexterm" data-primary="teams" data-secondary="skills" id="tskill"/><a data-type="indexterm" data-primary="skills" data-secondary="teams" id="skteam"/>đến mức mà các thành viên của nó cho phép. Nếu muốn có các nhóm hiệu suất cao, chúng ta cần đặc biệt chú ý đến cách quyết định ai sẽ được tham gia vào nhóm. Ví dụ, nhóm của chúng ta sẽ cần những vai trò và chuyên môn nào? Từng thành viên cần có mức độ tài năng và kinh nghiệm ra sao? Tỷ lệ pha trộn kỹ năng và kinh nghiệm như thế nào là phù hợp?</p>
+
+<p>Sự thật là rất khó để trả lời các câu hỏi này theo một cách áp dụng phổ quát. Đó là bởi con người và văn hóa thường là những thứ độc nhất ở nơi bạn làm việc. Ví dụ, một vài công ty sẵn sàng chi rất nhiều tiền để tuyển dụng top 1% nhân tài công nghệ trên toàn thế giới. Trong khi đó, một công ty khác có thể chủ yếu tuyển nhân lực địa phương, tập trung vào phát triển nghề nghiệp và học hỏi trong công việc từ một số ít chuyên gia. Thiết kế nhóm tốt ở hai công ty này có lẽ sẽ rất khác nhau.</p>
+
+<p>Chúng ta muốn cuốn sách này tập trung vào việc xây dựng một triển khai microservices. Vì vậy, chúng ta sẽ không đi quá sâu vào thiết kế tổ chức và văn hóa. Tin tốt là có một nguyên tắc chung mà chúng ta có thể áp dụng và có vẻ hữu ích với những người triển khai microservices trong hầu hết các bối cảnh. Đó là nguyên tắc về nhóm đa chức năng.</p>
+
+<p>Trong một nhóm đa chức năng, những người có các loại chuyên môn khác nhau (hay các chức năng khác nhau) cùng làm việc hướng tới <a data-type="indexterm" data-primary="teams" data-secondary="cross-functional" id="idm46223582491784"/><a data-type="indexterm" data-primary="cross-functional teams" id="idm46223582490808"/>một mục tiêu chung. Chuyên môn đó có thể trải dài trên cả miền công nghệ lẫn miền nghiệp vụ. Ví dụ, một nhóm đa chức năng có thể bao gồm nhà thiết kế UX, lập trình viên ứng dụng, product owner và business analyst.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Nhóm đa chức năng đã tồn tại từ rất lâu, ít nhất là từ thập niên 1950 tại Northwestern Mutual Life Insurance Company.</p>
+</div>
+
+<p>Một lợi thế lớn của cách xây dựng nhóm này là bạn có thể đưa ra các quyết định tốt hơn với tốc độ nhanh hơn. Trước đó, chúng ta đã xác lập giới hạn trên cho quy mô nhóm bằng cách giới hạn số thành viên ở mức tám người. Một nhóm “đúng cỡ” với đúng người trên tàu có thể di chuyển với vận tốc cao và đủ thẩm quyền.</p>
+
+<p>Nhưng ai là <em>đúng người</em>? Khi nói về quy mô nhóm, chúng ta có các giai thoại, kinh nghiệm và nghiên cứu học thuật để tham chiếu. Nhưng khi nói đến chân dung nhóm, việc tìm được những câu chuyện nhất quán khó hơn nhiều. Ví dụ, khi quan sát một nhà cung cấp đám mây lớn làm microservices, chúng tôi thấy họ sử dụng bốn đến năm chuyên gia có kiến thức xuyên miền, kết hợp với một chuyên gia kiểm thử. Ngược lại, chúng tôi cũng thấy các công ty tư vấn dùng một tổ hợp lớn gồm kỹ sư chuyên biệt, product owner, quản lý dự án và chuyên gia kiểm thử trên mỗi nhóm. Tài năng, kinh nghiệm và văn hóa của tổ chức bạn sẽ quyết định chính xác tổ hợp con người đó trông như thế nào.</p>
+
+<p>Vì vậy, thay vì áp đặt chính xác nhóm của bạn cần những vai trò nào, chúng ta sẽ đưa ra hai quyết định chung cho mô hình này. Thứ nhất, các nhóm nên là đa chức năng. Kinh nghiệm của chúng tôi cho thấy công việc microservices vận hành tốt hơn khi các nhóm có thể tự đưa ra quyết định tốt. Nhóm đa chức năng cho phép điều đó. Thứ hai, các nhóm nên gồm những thành viên trực tiếp ảnh hưởng tới đầu ra. Bằng cách này, chúng ta chọn những người mà mình biết chắc có thể mang lại giá trị cho nhóm. Chúng ta không cần những người chỉ quan sát hoặc những người chỉ liên quan rất gián tiếp đến công việc và quyết định đang được thực hiện.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223582485192">
+<h5>Quyết định chính: Cần Xác định Nguyên tắc cho Thành viên Nhóm</h5>
+<p>Các nhóm nên là đa chức năng và chỉ gồm những thành viên có thể tạo ra giá trị cho đầu ra, dịch vụ hoặc sản phẩm của nhóm.</p>
+</div></aside>
+
+<p>Với đúng quy mô và đúng con người, chúng ta sẽ có khả năng xây dựng những nhóm hiệu quả có thể hoàn thành công việc. Khi số lượng nhóm tăng lên, chúng ta cũng cần xem xét cách các nhóm phối hợp với nhau. Đó là <a data-type="indexterm" data-primary="teams" data-secondary="skills" data-startref="tskill" id="idm46223582482968"/><a data-type="indexterm" data-primary="skills" data-secondary="teams" data-startref="skteam" id="idm46223582481720"/>thuộc tính cuối cùng của nhóm mà chúng ta cần giải quyết.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Interteam Coordination"><div class="sect2" id="idm46223582498040">
+<h2>Phối hợp Liên nhóm</h2>
+
+<p>Xây dựng một nhóm có <a data-type="indexterm" data-primary="teams" data-secondary="coordination and collaboration" id="coord"/>quy mô phù hợp và lấp đầy nó bằng đúng con người sẽ giúp chúng ta tạo ra những nhóm hiệu suất cao. Nhưng chính sự giao tiếp giữa các nhóm, chứ không phải bên trong mỗi nhóm, mới là thứ có thể thực sự kéo chậm một hệ thống microservices. Chúng ta đã nêu bật bài toán về chi phí phối hợp trong <a data-type="xref" href="ch01.html#coordination-cost-problem">“Bài toán Chi phí Phối hợp”</a>. Nếu có thể giảm lượng phối hợp phải diễn ra giữa các nhóm, các nhóm microservices của chúng ta sẽ có thể phân phối thay đổi nhanh hơn.</p>
+
+<p>Sẽ thật tuyệt nếu các nhóm microservices của chúng ta có thể hành động hoàn toàn tự chủ và độc lập. Nếu các nhóm được tự do đưa ra quyết định riêng về thiết kế, phát triển, kiểm thử và triển khai, sẽ không có “ma sát tổ chức” nào làm chậm họ. Theo kinh nghiệm của chúng tôi, đây không phải là một phương thức vận hành thực tế.</p>
+
+<p>Đó là bởi phối hợp và cộng tác là điều quan trọng đối với thành công của một tổ chức. Chúng ta có thể muốn các nhóm microservices hoạt động độc lập, nhưng chúng ta cũng muốn họ tạo ra những dịch vụ có giá trị cho khách hàng, người dùng và tổ chức. Điều đó có nghĩa là giao tiếp là điều bắt buộc để thiết lập mục tiêu chung, trao đổi yêu cầu thay đổi, chuyển giao phản hồi và giải quyết vấn đề.</p>
+
+<p>Không chỉ vậy, khi các nhóm hoạt động hoàn toàn độc lập, cơ hội chia sẻ cũng ít đi. Các nhóm microservices làm việc độc lập có thể chọn đúng công cụ cho đúng bài toán và xây dựng những hệ thống rất hiệu quả. Nhưng hiệu quả đó chỉ cục bộ ở mức nhóm. Đôi khi điều đó có nghĩa là chúng ta đánh mất hiệu quả ở cấp độ <em>toàn hệ thống</em>. Ví dụ, nếu tất cả các nhóm đều tự thiết kế và xây dựng kiến trúc mạng trên đám mây của riêng mình, chúng ta đã bỏ lỡ cơ hội chỉ làm việc đó một lần rồi chia sẻ cho tất cả.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Vẫn có thể xây dựng một tổ chức cho phép sự độc lập và tự chủ hiệu quả của các nhóm thông qua tự tổ chức. Ví dụ, người tiên phong về microservices Fred George <a data-type="indexterm" data-primary="George, Fred" id="idm46223582472088"/>đã mô tả một phương pháp mà ông gọi là <a href="https://oreil.ly/C1N0f">Programmer Anarchy</a>, trong đó <a data-type="indexterm" data-primary="Programmer Anarchy" id="idm46223582470600"/>các nhóm công nghệ có toàn quyền tự chủ (và toàn bộ trách nhiệm) trong việc hình thành nhóm, chọn công việc và thiết kế giải pháp của riêng mình. Nhưng theo kinh nghiệm của chúng tôi, phần lớn các tổ chức doanh nghiệp sẽ gặp khó khăn nếu muốn vận hành mô hình này một cách nhất quán.</p>
+</div>
+
+<p>Nếu chúng ta nghiêng quá xa về phía độc lập và tự chủ của nhóm, chúng ta sẽ đưa vào hệ thống các sự kém hiệu quả ở cấp độ toàn cục và sự lệch pha với các mục tiêu của tổ chức. Nếu đưa vào quá nhiều phối hợp, chúng ta có nguy cơ làm cả hệ thống chậm lại và đánh mất những lợi ích của microservices có khả năng thay đổi cao. Thách thức nằm ở việc đạt được điểm cân bằng phù hợp giữa công việc độc lập và nỗ lực phối hợp. Điều đó đòi hỏi thử nghiệm và tinh chỉnh liên tục trong thiết kế đội nhóm của bạn.</p>
+
+<p>Quan trọng nhất, tối ưu hóa việc phối hợp giữa các nhóm đòi hỏi một nỗ lực thiết kế chủ động. Một trong những sai lầm mà chúng tôi từng thấy ở người thực hành là chỉ tập trung vào kiến trúc kỹ thuật. Khi điều đó xảy ra, thiết kế nhóm sẽ hình thành xung quanh công nghệ đã được tạo ra. Chỉ đến lúc đó, các vấn đề của mô hình phối hợp mới trở nên hiển hiện. Và đến khi ấy, việc thay đổi thường đã quá tốn kém hoặc quá khó khăn.</p>
+
+<p class="less_space pagebreak-before">Để tránh vấn đề này, chúng ta sẽ xử lý việc phối hợp và thiết kế nhóm như bước đầu tiên của quá trình thiết kế hệ thống. Một số người gọi đây là “inverse Conway maneuver”, vì cấu trúc giao tiếp mà chúng ta thiết kế cuối cùng sẽ định hình hệ thống được tạo ra. Dù bạn muốn gọi nó là gì, chúng tôi nhận thấy rằng bắt đầu bằng việc tập trung vào thiết kế nhóm và phối hợp thực sự giúp bạn thành công hơn với thiết kế microservices. Trên thực tế, điểm này quan trọng đến mức chúng ta sẽ ghi lại nó như một quyết định.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223582466264">
+<h5>Quyết định chính: Khi nào Thiết kế Nhóm và Mô hình Phối hợp</h5>
+<p>Việc thiết kế nhóm và mô hình phối hợp nên bắt đầu trước khi thiết kế kiến trúc hệ thống hoặc microservices. Mô hình nhóm và phối hợp phải được cập nhật và cải tiến liên tục trong suốt vòng đời của hệ thống.</p>
+</div></aside>
+
+<p>Chúng ta sẽ đề cập nội dung này trong phần còn lại của chương. Trước tiên, chúng ta sẽ giới thiệu một công cụ hữu ích để thiết kế mô hình nhóm microservices <a data-type="indexterm" data-primary="teams" data-secondary="coordination and collaboration" data-startref="coord" id="idm46223582464056"/>gọi là Team Topologies.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Introducing Team Topologies"><div class="sect1" id="idm46223578750120">
+<h1>Giới thiệu Team Topologies</h1>
+
+<p>Vì chúng ta sẽ bắt đầu công việc thiết kế bằng việc tập trung vào các nhóm, nên chúng ta cần một cách để ghi nhận và truyền đạt các quyết định của mình. Có nhiều cách để tài liệu hóa thiết kế nhóm. Đối với mô hình này, chúng ta sẽ sử dụng một công cụ thiết kế gọi là Team Topologies.</p>
+
+<p><a href="https://teamtopologies.com">Team Topologies</a> là một cách tiếp cận thiết kế <a data-type="indexterm" data-primary="Team Topologies" id="idm46223582460024"/>do Matthew Skelton và Manuel Pais sáng tạo ra. Chúng tôi thích sử dụng nó vì nó cung cấp một ngôn ngữ chính thức để nói về thiết kế nhóm, với sự tập trung đặc biệt vào cách các nhóm làm việc với nhau.</p>
+
+<p>Chúng ta sẽ không sử dụng mọi khía cạnh của cách tiếp cận Team Topologies trong công việc thiết kế của mình. Thay vào đó, chúng ta sẽ khai thác ba thành phần: loại nhóm, chế độ tương tác giữa các nhóm và sơ đồ hóa. Với những phần này, chúng ta sẽ có thể xây dựng một thiết kế đơn giản nhưng hữu dụng cho các nhóm microservices.</p>
+
+<p>Tiếp theo, chúng ta sẽ xem xét các phần khác nhau của cách tiếp cận Team Topologies, bắt đầu với những loại nhóm mà chúng ta có thể định nghĩa.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Team Types"><div class="sect2" id="idm46223582457592">
+<h2>Các Loại Nhóm</h2>
+
+<p>Một trong những khái niệm cốt lõi của Team Topologies là <em>loại nhóm</em>. Đây là các nguyên mẫu hoặc danh mục mô tả bản chất cơ bản của một nhóm, xét từ góc nhìn giao tiếp của nhóm đó với phần còn lại của tổ chức. Team Topologies định nghĩa bốn loại nhóm: stream-aligned, enabling, complicated-subsystem và platform. Hãy cùng điểm qua từng loại:</p>
+<dl>
+<dt>Stream-Aligned</dt>
+<dd>
+<p>Một nhóm stream-aligned <a data-type="indexterm" data-primary="Team Topologies" data-secondary="stream-aligned" id="idm46223582453784"/><a data-type="indexterm" data-primary="stream-aligned teams" id="idm46223582452776"/>sở hữu và vận hành một phần công việc có thể bàn giao. Đặc trưng quan trọng nhất của kiểu nhóm này là liên tục bàn giao một thứ gì đó có liên quan tới tổ chức kinh doanh. Nhóm stream-aligned thể hiện rất rõ <a href="https://oreil.ly/bIwkK">nhận xét</a> của CTO Amazon Werner Vogels về trách nhiệm của các nhóm ở Amazon: “You build it, you run it.” Các nhóm stream-aligned không giải tán sau một lần phát hành. Thay vào đó, họ tiếp tục sở hữu và triển khai một “dòng” thay đổi, cải tiến và sửa lỗi cho phần giá trị nghiệp vụ mà mình chịu trách nhiệm. Ví dụ, các nhóm microservices thường là stream-aligned vì họ liên tục phát hành tính năng cho những dịch vụ mà mình sở hữu.</p>
+</dd>
+<dt>Enabling</dt>
+<dd>
+<p>Một nhóm enabling hỗ trợ <a data-type="indexterm" data-primary="Team Topologies" data-secondary="enabling" id="idm46223582449368"/><a data-type="indexterm" data-primary="enabling teams" id="idm46223582448392"/>công việc của các nhóm khác theo mô hình gắn kết kiểu tư vấn. Những nhóm này thường gồm các chuyên gia và chuyên viên chủ đề có thể bắc cầu cho những khoảng trống về năng lực hoặc khả năng. Nhưng họ cũng có thể giúp từng nhóm hiểu bức tranh lớn hơn của tổ chức hoặc ngành mà họ đang hoạt động. Ví dụ, một nhóm kiến trúc dạng enabling có thể giúp các nhóm microservices hiểu những tiêu chuẩn và quy ước kỹ thuật mới nổi trong tổ chức.</p>
+</dd>
+<dt>Complicated-Subsystem</dt>
+<dd>
+<p>Loại nhóm này làm việc trên một <a data-type="indexterm" data-primary="Team Topologies" data-secondary="complicated-subsystem" id="idm46223582445832"/><a data-type="indexterm" data-primary="complicated-subsystem teams" id="idm46223582444856"/>miền hoặc một chủ đề chuyên môn khó hiểu. Hoặc ít nhất, nó đủ khó để tổ chức không có sẵn nhiều nguồn lực cho lĩnh vực đó. Một số vùng bài toán không mở rộng tốt và không thể nhúng vào mọi nhóm. Ví dụ, tinh chỉnh phần mềm để đạt mức an toàn mật mã <a data-type="indexterm" data-primary="security" data-secondary="subsystem and" id="idm46223582443672"/>đòi hỏi một loại chuyên môn và kinh nghiệm rất đặc biệt. Thay vì cố gắng nhân rộng kỹ năng đó sang tất cả các nhóm, phần lớn tổ chức sẽ tạo ra một nhóm bảo mật dạng complicated-subsystem để làm việc với từng nhóm khi cần.</p>
+</dd>
+<dt>Platform</dt>
+<dd>
+<p>Giống như các nhóm enabling, <a data-type="indexterm" data-primary="Team Topologies" data-secondary="platform" id="idm46223582441080"/><a data-type="indexterm" data-primary="platform teams" id="idm46223582440104"/>nhóm platform cung cấp hỗ trợ cho phần còn lại của tổ chức, nhưng có một khác biệt quan trọng: nhóm platform mang đến trải nghiệm hỗ trợ tự phục vụ cho người dùng của mình. Trong khi các nhóm enabling và complicated-subsystem bị giới hạn bởi băng thông của con người, nhóm platform đầu tư vào việc xây dựng các công cụ và quy trình hỗ trợ có thể mở rộng dễ dàng. Điều này đòi hỏi đầu tư ban đầu nhiều hơn cũng như công sức bảo trì và hỗ trợ liên tục. Nền tảng trở thành một sản phẩm, và người dùng của nó là các nhóm còn lại trong tổ chức. Ví dụ, các nhóm vận hành có thể trở thành nhóm platform khi họ cung cấp công cụ xây dựng và phát hành để các nhóm phát triển sử dụng.</p>
+</dd>
+</dl>
+
+<p>Khi đã hiểu bốn loại nhóm này, chúng ta có thể bắt đầu truyền đạt cách mình muốn các nhóm vận hành. Nhưng để thực sự truyền đạt được thiết kế nhóm, chúng ta cần thêm một phần nữa của mô hình: những cách mà các nhóm tương tác với nhau, và đó là điều chúng ta sẽ đề cập tiếp theo.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Interaction Modes"><div class="sect2" id="idm46223582437576">
+<h2>Các Chế độ Tương tác</h2>
+
+<p>Mục tiêu của chúng ta khi thiết kế các nhóm cho quá trình xây dựng microservices là giảm lượng phối hợp cần xảy ra để công việc được hoàn thành. Các loại nhóm trong Team Topologies giúp chúng ta xác định những đặc tính cơ bản của một nhóm. Nhưng để thực sự hiểu được bằng cách nào và ở đâu chúng ta có thể giảm chi phí phối hợp, chúng ta cần diễn đạt cách các nhóm của mình đang phối hợp với nhau. Đó là nơi các chế độ tương tác của Team Topologies phát huy tác dụng. Trong cuốn sách của mình, Skelton và Pais nói đến ba chế độ tương tác, mô tả các mức độ phối hợp khác nhau:</p>
+<dl>
+<dt>Collaboration</dt>
+<dd>
+<p>Chế độ tương tác này <a data-type="indexterm" data-primary="Team Topologies" data-secondary="interaction modes" data-tertiary="collaboration" id="idm46223582433960"/><a data-type="indexterm" data-primary="collaboration interaction mode, Team Topology" id="idm46223582232856"/>đòi hỏi hai nhóm phải làm việc rất chặt chẽ với nhau. Collaboration tạo ra cơ hội để các nhóm học hỏi, khám phá và đổi mới. Nhưng nó yêu cầu mức phối hợp cao từ cả hai phía và rất khó mở rộng. Ví dụ, một nhóm bảo mật <a data-type="indexterm" data-primary="security" data-secondary="collaboration and" id="idm46223582231832"/>có thể collaboration với một nhóm microservices để phát triển một phiên bản phần mềm an toàn hơn. Công việc cộng tác đó có thể bao gồm cùng nhau thiết kế, viết và kiểm thử mã.</p>
+</dd>
+<dt>Facilitating</dt>
+<dd>
+<p>Tương tác <a data-type="indexterm" data-primary="Team Topologies" data-secondary="interaction modes" data-tertiary="facilitating" id="idm46223582229288"/><a data-type="indexterm" data-primary="facilitating interaction mode, Team Topology" id="idm46223582228008"/>facilitating tương tự như collaboration, nhưng mang tính một chiều. Thay vì hai nhóm cùng nhau giải quyết một vấn đề chung, một nhóm sẽ đóng vai trò hỗ trợ để giúp nhóm còn lại đạt được kết quả mong muốn. Một ví dụ về tương tác facilitating là khi một nhóm hạ tầng giúp một nhóm microservices hiểu cách khắc phục sự cố với kiến trúc mạng mà họ đã được cung cấp.</p>
+</dd>
+<dt>X-as-a-service</dt>
+<dd>
+<p>Đôi khi sự cộng tác giữa các nhóm <a data-type="indexterm" data-primary="Team Topologies" data-secondary="interaction modes" data-tertiary="X-as-a-service" id="idm46223582225464"/><a data-type="indexterm" data-primary="X-as-a-service interaction mode, Team Topology" id="idm46223582224184"/>mang màu sắc giữa bên cung cấp và bên tiêu thụ. Trong kiểu tương tác này, một nhóm cung cấp một dịch vụ cho các nhóm khác trong tổ chức với mức phối hợp tối thiểu. Điều này thường xảy ra khi một nhóm phát hành một quy trình, tài liệu, thư viện, API hoặc nền tảng dùng chung. Tương tác <em>X</em>-as-a-service thường mở rộng tốt vì nó đòi hỏi ít phối hợp hơn. Đây cũng là một mô hình rất phù hợp với các nhóm platform, dù những loại nhóm khác cũng có thể dùng nó. Ví dụ, một nhóm kiến trúc dạng enabling có thể tài liệu hóa một danh sách các mẫu phần mềm được khuyến nghị và cung cấp chúng cho mọi nhóm microservices theo mô hình “patterns as a service”.</p>
+</dd>
+</dl>
+
+<p>Team Topologies còn nhiều thứ hơn những gì chúng ta đã phác thảo ở đây. Khi kết hợp lại, việc phân loại loại nhóm và cách tương tác này cho chúng ta một bộ từ vựng rất tốt để vẽ nên bức tranh về các nhóm microservices nên trông như thế nào, với trọng tâm đặc biệt vào thời điểm và mức độ mà các nhóm sẽ cần phối hợp với nhau. Trong phần tiếp theo, chúng ta sẽ dùng các thuật ngữ mượn từ Team Topologies để thiết kế một mô hình nhóm microservices.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Designing a Microservices Team Topology"><div class="sect1" id="idm46223582221032">
+<h1>Thiết kế Team Topology cho Microservices</h1>
+
+<p>Cách tiếp cận Team Topology <a data-type="indexterm" data-primary="Team Topologies" data-secondary="designing" id="idm46223582219336"/><a data-type="indexterm" data-primary="design" data-secondary="Team Topologies" id="idm46223582218328"/>cho chúng ta một ngôn ngữ để nói về phối hợp đội nhóm. Điều làm nó thực sự đặc biệt là đây là một ngôn ngữ được xây dựng cho biểu diễn trực quan. Trong phần này, chúng ta sẽ tạo ra một thiết kế cho các nhóm microservices để truyền đạt những nhóm mà chúng ta cần và cách họ sẽ làm việc với nhau. Khi hoàn tất, chúng ta sẽ có một sơ đồ làm nổi bật những điểm chính về phối hợp và 
+<span class="keep-together">tương tác.</span></p>
+
+<p>Để tạo ra thiết kế nhóm và Team Topology, chúng ta sẽ đi theo cách tiếp cận từng bước như sau:</p>
+<ol>
+<li>
+<p>Thiết lập một nhóm thiết kế hệ thống.</p>
+</li>
+<li>
+<p>Tạo một mẫu nhóm microservices cho các nhóm sau này.</p>
+</li>
+<li>
+<p>Xác định các nhóm platform.</p>
+</li>
+<li>
+<p>Thêm các nhóm enabling và complicated-subsystem.</p>
+</li>
+<li>
+<p>Thêm các nhóm tiêu thụ chính.</p>
+</li>
+
+</ol>
+
+<p>Khi đi qua từng bước, chúng ta sẽ tài liệu hóa thiết kế nhóm của mình và xây dựng Team Topology. Ở mỗi bước, chúng ta sẽ xác định một hoặc nhiều nhóm, tạo và điền một tài liệu thiết kế nhóm, đồng thời vẽ các tương tác chính của nhóm đó. Hãy bắt đầu bằng việc tập trung vào nhóm thiết kế hệ thống.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Không có một Team Topology duy nhất nào phù hợp với tất cả mọi người. Không thể nào tính hết được quy mô tổ chức, con người, kỹ năng và nhu cầu của riêng bạn. Topology mà chúng tôi tạo ra ở đây là phiên bản tổng hợp từ những triển khai quy mô doanh nghiệp lớn mà chúng tôi đã thấy vận hành tốt.</p>
+</div>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Establish a System Design Team"><div class="sect2" id="idm46223582208664">
+<h2>Thiết lập một Nhóm Thiết kế Hệ thống</h2>
+
+<p>Một hệ thống microservices là một <a data-type="indexterm" data-primary="teams" data-secondary="system design" id="idm46223582206872"/><a data-type="indexterm" data-primary="system design team" id="idm46223582205896"/>hệ thống phức tạp với rất nhiều bộ phận và rất nhiều con người cùng tham gia làm việc. Phần mềm được xây dựng sẽ hình thành từ quá trình ra quyết định và thực thi công việc mang tính tập thể của toàn bộ những con người đó. Theo kinh nghiệm của chúng tôi, làm cho mọi thứ cùng hoạt động theo đúng cách bạn mong muốn không hề dễ. Đó là lý do bạn cần chỉ định một nhóm người có thể định hình tầm nhìn và hành vi của toàn bộ hệ thống. Trong mô hình này, chúng ta sẽ gọi nhóm đó là nhóm thiết kế hệ thống.</p>
+
+<p class="less_space pagebreak-before">Trong mô hình của chúng ta, nhóm thiết kế hệ thống có ba trách nhiệm cốt lõi:</p>
+<dl>
+<dt>Thiết kế cấu trúc nhóm</dt>
+<dd>
+<p>Nhóm thiết kế hệ thống là nhóm đầu tiên <a data-type="indexterm" data-primary="teams" data-secondary="system design" data-tertiary="structures" id="idm46223582202200"/><a data-type="indexterm" data-primary="system design team" data-secondary="structures" id="idm46223582200952"/>mà chúng ta đưa vào. Đây cũng là nhóm mà chúng ta kỳ vọng sẽ thiết kế ra các nhóm thực hiện công việc xây dựng hệ thống. Đó chính là công việc mà chúng ta sẽ làm trong những bước thiết kế nhóm tiếp theo. Trên thực tế, ở đây chúng ta đang cùng nhau đóng vai nhóm thiết kế hệ thống.</p>
+</dd>
+<dt>Thiết lập tiêu chuẩn, động lực khuyến khích và “rào chắn”</dt>
+<dd>
+<p>Ngoài việc hình thành các nhóm, <a data-type="indexterm" data-primary="teams" data-secondary="system design" data-tertiary="standards" id="idm46223582198344"/><a data-type="indexterm" data-primary="system design team" data-secondary="standards" id="idm46223582197096"/><a data-type="indexterm" data-primary="teams" data-secondary="system design" data-tertiary="incentives" id="idm46223582196152"/><a data-type="indexterm" data-primary="system design team" data-secondary="incentives" id="idm46223582194936"/><a data-type="indexterm" data-primary="teams" data-secondary="system design" data-tertiary="guardrails" id="idm46223582193992"/><a data-type="indexterm" data-primary="system design team" data-secondary="guardrails" id="idm46223582192776"/>nhóm thiết kế hệ thống còn phải định hình những quyết định mà từng nhóm riêng lẻ được phép đưa ra. Điều này giúp bảo đảm các nhóm tạo ra kết quả phù hợp với mục tiêu hệ thống của chúng ta. Một cách để làm điều đó là áp dụng các tiêu chuẩn để quy định nhóm được và không được làm gì. Đó là cách tiếp cận mang tính quy định mà chúng tôi đã dùng cho nhiều quyết định trong cuốn sách này. Trên thực tế, chuẩn hóa quá mức sẽ khó duy trì và quá gò bó đối với một hệ thống lành mạnh. Những người thiết kế giỏi sẽ đưa vào các cơ chế khuyến khích để thúc đẩy nhiều hơn hành vi mà họ mong muốn, cùng với các “rào chắn” đóng vai trò như các khuyến nghị và tài liệu tham chiếu mềm hơn là những quy tắc cứng nhắc.</p>
+</dd>
+<dt>Liên tục cải thiện hệ thống</dt>
+<dd>
+<p>Cuối cùng, nhóm thiết kế hệ thống cần <a data-type="indexterm" data-primary="teams" data-secondary="system design" data-tertiary="improvements" id="idm46223582189720"/><a data-type="indexterm" data-primary="system design team" data-secondary="improvements" id="idm46223582188472"/>liên tục cải thiện mọi thiết kế nhóm, tiêu chuẩn, cơ chế khuyến khích và rào chắn đã được đưa vào. Để làm được điều đó, họ cần thiết lập một cách theo dõi hoặc đo lường hệ thống như một tổng thể để có thể thực hiện thay đổi và đưa vào các cải tiến.</p>
+</dd>
+</dl>
+
+<p>Việc tài liệu hóa các trách nhiệm này là rất hữu ích để chúng ta có thể truyền đạt rõ ràng từng nhóm làm gì. Trên thực tế, chúng ta nên tài liệu hóa mọi thuộc tính quan trọng của các nhóm để dễ hiểu và cải thiện chúng khi hệ thống phát triển. Ở mức tối thiểu, chúng ta nên bao quát loại nhóm trong Team Topology, quy mô nhóm và các trách nhiệm mà chúng ta đã xác định trước đó.</p>
+
+<p>Hãy bắt đầu bằng việc quyết định loại Team Topology. Sau giai đoạn thiết lập ban đầu cho thiết kế nhóm và tiêu chuẩn, chúng ta kỳ vọng nhóm thiết kế hệ thống sẽ tập trung vào việc giúp các nhóm khác xây dựng microservices và các thành phần hỗ trợ. Chúng ta kỳ vọng phần lớn công việc của họ mang tính tư vấn, giúp các nhóm giao hàng điều hướng trong hệ thống. Dù nhóm thiết kế hệ thống tạo ra một hệ thống, kiểu công việc mà chúng ta muốn họ thực hiện lại mang đặc trưng của loại nhóm enabling.</p>
+
+<p>Chúng ta cũng muốn nhóm thiết kế hệ thống nhỏ. Nó chỉ nên gồm một vài lãnh đạo cấp cao, kiến trúc sư và nhà thiết kế hệ thống có thể nhanh chóng đưa ra quyết định cùng nhau cho toàn hệ thống. Vì vậy, chúng ta sẽ giới hạn quy mô nhóm ở mức từ ba đến năm người, thậm chí còn nhỏ hơn cả quy mô nhóm chung mà chúng ta đã quyết định trước đó.</p>
+
+<p class="less_space pagebreak-before">Hãy ghi lại các quyết định và thuộc tính nhóm này bằng cách tạo một tài liệu thiết kế gọn nhẹ cho nhóm thiết kế hệ thống. Dùng trình soạn thảo văn bản hoặc công cụ tài liệu yêu thích của bạn, hãy tạo một tệp tên là <em>system-design-team.md</em> và điền nội dung như sau:</p>
+
+<pre data-type="programlisting" data-code-language="markdown"><code class="gh">#</code> Nhóm Thiết kế Hệ thống
+
+<code class="gu">##</code> Loại Nhóm
+Enabling
+
+<code class="gu">##</code> Quy mô Nhóm
+3-5 Người
+
+<code class="gu">##</code> Trách nhiệm
+<code class="k">*</code> Thiết kế cấu trúc nhóm
+<code class="k">*</code> Thiết lập tiêu chuẩn và "rào chắn"
+<code class="k">*</code> Liên tục cải thiện hệ thống</pre>
+
+<p>Điểm hay của việc sử dụng một tệp văn bản để tài liệu hóa nhóm là chúng ta có thể đối xử với nó như mã nguồn. Nhờ vậy, chúng ta có thể lưu tài liệu này trong một kho mã nguồn và quản lý phiên bản mỗi khi cần thay đổi. Ngoài ra, bạn cũng có thể dùng wiki, kho tài liệu hoặc bất cứ thứ gì phù hợp nhất với công ty của mình. Chúng tôi để bạn tự quyết định cách muốn quản lý các tệp thiết kế nhóm. Bạn có thể tìm thấy toàn bộ ví dụ về thiết kế nhóm của chúng tôi trong <a href="https://oreil.ly/Microservices_UpandRunning_team-designs">kho GitHub của chúng tôi</a>.</p>
+
+<p>Tại thời điểm này, thông thường chúng ta sẽ biểu diễn nhóm bằng sơ đồ trực quan và vẽ ra các tương tác của nó với những nhóm khác trong hệ thống. Đây là phần cốt lõi trong công việc thiết kế nhóm và cho phép chúng ta hình dung cách các nhóm sẽ làm việc với nhau. Ví dụ, chúng ta có thể kỳ vọng nhóm thiết kế hệ thống sẽ dùng mô hình tương tác facilitating với các nhóm microservices. Nhưng vì đây là nhóm đầu tiên chúng ta định nghĩa, hiện chưa có nhóm nào khác để tương tác cùng. Vì vậy, chúng ta sẽ để phần vẽ sơ đồ lại cho sau.</p>
+
+<p>Khi tài liệu của nhóm thiết kế hệ thống đã được tạo xong, chúng ta có thể chuyển sang tài liệu hóa và sơ đồ hóa các nhóm microservices.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Building a Microservices Team Template"><div class="sect2" id="idm46223582208040">
+<h2>Xây dựng một Mẫu Nhóm Microservices</h2>
+
+<p>Trong mô hình “up and running”, mỗi <a data-type="indexterm" data-primary="teams" data-secondary="template" id="teamtemp"/><a data-type="indexterm" data-primary="templates" data-secondary="teams" id="temp"/>microservice đều do một nhóm sở hữu. Một nhóm duy nhất này nắm quyền quyết định và thực hiện công việc thiết kế, xây dựng, phân phối và bảo trì một microservice. Trên thực tế, một nhóm có thể sở hữu nhiều microservice. Điều này là ổn và tránh cho số lượng nhóm tăng lên không cần thiết. Ràng buộc quan trọng nhất là trách nhiệm đối với một microservice không được chia sẻ cho nhiều nhóm. Quyền sở hữu microservice sẽ được giới hạn ở một nhóm chịu trách nhiệm và có trách nhiệm giải trình rõ ràng.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223582170824">
+<h5>Quyết định chính: Quyền Sở hữu Microservice</h5>
+<p>Mỗi microservice sẽ do <a data-type="indexterm" data-primary="microservices" data-secondary="ownership" id="idm46223582165000"/>một nhóm duy nhất sở hữu; nhóm này sẽ thiết kế, xây dựng và vận hành nó. Nhóm này chịu trách nhiệm với microservice trong suốt vòng đời của dịch vụ.</p>
+</div></aside>
+
+<p>Khi hệ thống của bạn trưởng thành, bạn sẽ có rất nhiều microservice. Và rất có thể bạn cũng sẽ có rất nhiều nhóm microservices. Vì chúng ta kỳ vọng sẽ có nhiều nhóm microservices cùng vận hành trong hệ thống, nên chúng ta sẽ không thiết kế từng nhóm một cách riêng lẻ. Thay vào đó, chúng ta sẽ định nghĩa một mẫu nhóm microservices có thể áp dụng cho bất kỳ nhóm mới nào được tạo ra. Hãy xem nó như việc tạo ra một khuôn cắt để sau này có thể “đục” ra các nhóm microservices mới mỗi khi cần. Hoặc, nếu bạn có nền tảng lập trình, hãy xem đây như việc định nghĩa một “lớp” mà sau này chúng ta sẽ tạo ra các “đối tượng” từ đó.</p>
+
+<p>Để bắt đầu, chúng ta sẽ làm điều tương tự như với nhóm thiết kế hệ thống, đó là xác định một số thuộc tính thiết yếu của nhóm. Giống như trước, chúng ta sẽ tài liệu hóa loại nhóm, quy mô nhóm và trách nhiệm. Như đã đề cập trước đó, các nhóm microservices được kỳ vọng sẽ sở hữu độc lập một hoặc nhiều microservice. Quyền sở hữu đó bao gồm cả việc vận hành dịch vụ và phát hành liên tục các cải tiến, sửa lỗi và thay đổi khi cần.</p>
+
+<p>Với đặc tính đó, việc <a data-type="indexterm" data-primary="Team Topologies" data-secondary="stream-aligned" id="idm46223582161304"/><a data-type="indexterm" data-primary="stream-aligned teams" id="idm46223582160328"/>phân loại nhóm microservices là stream-aligned là hoàn toàn hợp lý. Chúng ta cũng sẽ bám theo quyết định về quy mô nhóm mà mình đã đưa ra trước đó trong chương này và giữ quy mô nhóm trong khoảng từ năm đến tám người. Hãy tài liệu hóa tất cả các thuộc tính này giống như trước. Tạo một tệp tên là <em>microservice-team-template.md</em> và điền nội dung như sau:</p>
+
+<pre data-type="programlisting" data-code-language="markdown"><code class="gh">#</code> Mẫu Nhóm Microservices
+
+<code class="gu">##</code> Loại Nhóm
+Stream-Aligned
+
+<code class="gu">##</code> Quy mô Nhóm
+5-8 Người
+
+<code class="gu">##</code> Trách nhiệm
+<code class="k">*</code> Thiết kế và phát triển microservice
+<code class="k">*</code> Kiểm thử, xây dựng và phân phối microservice
+<code class="k">*</code> Khắc phục sự cố</pre>
+
+<p class="less_space pagebreak-before">Khi định nghĩa mẫu đã được tài liệu hóa, chúng ta có thể bắt đầu sơ đồ hóa mô hình tương tác giữa các nhóm. Để làm điều đó, hãy mở một công cụ vẽ hoặc sơ đồ và vẽ một hình chữ nhật nằm ngang như trong <a data-type="xref" href="#microservice-team-diagram">Hình 2-1</a>. Chúng tôi dùng màu vàng cho hình này; mỗi loại nhóm nên có một màu riêng.</p>
+
+<figure><div id="microservice-team-diagram" class="figure">
+<img src="assets/msur_0201.png" alt="Microservice Team"/>
+<h6><span class="label">Hình 2-1. </span>Một nhóm microservices stream-aligned</h6>
+</div></figure>
+<div data-type="tip"><h6>Mẹo</h6>
+<p>Nếu bạn chưa có công cụ vẽ sơ đồ yêu thích, <a href="https://www.diagrams.net">diagrams.net</a> và <a href="https://www.lucidchart.com">Lucidchart</a> là những lựa chọn <a data-type="indexterm" data-primary="diagramming tools" id="idm46223582125560"/>chạy trên trình duyệt rất tốt và miễn phí để bắt đầu. Dĩ nhiên, bạn cũng hoàn toàn có thể vẽ theo cách truyền thống, với một cây bút và một chiếc khăn giấy!</p>
+</div>
+
+<p>Ở phần trước, chúng ta đã định nghĩa nhóm thiết kế hệ thống. Giờ khi đã có sơ đồ nhóm microservices, chúng ta có thể thêm nhóm hệ thống vào bức tranh. Hãy vẽ nhóm thiết kế hệ thống dưới dạng một hình chữ nhật đứng, như trong <a data-type="xref" href="#system-enabling-microservices">Hình 2-2</a>.</p>
+
+<figure><div id="system-enabling-microservices" class="figure">
+<img src="assets/msur_0202.png" alt="Microservice Team"/>
+<h6><span class="label">Hình 2-2. </span>Nhóm thiết kế hệ thống dạng enabling</h6>
+</div></figure>
+
+<p>Hãy dùng một màu riêng (chúng tôi dùng màu tím) cho nhóm thiết kế hệ thống để thể hiện rằng đây là một nhóm enabling. Chúng tôi đặt nó theo chiều dọc và ở bên trái nhóm microservices để thể hiện có sự tương tác giữa hai nhóm. Trong trường hợp này, chúng ta kỳ vọng nhóm thiết kế hệ thống sẽ đóng vai trò hỗ trợ cho các nhóm microservices. Để giữ mọi thứ đơn giản, hiện tại chúng ta sẽ không mô hình hóa chi tiết cụ thể của chế độ tương tác. Chỉ cần làm nổi bật việc các nhóm này sẽ cần tương tác với nhau là đủ ở giai đoạn này.</p>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Lựa chọn màu sắc cho các loại nhóm trong chương này của chúng tôi dựa trên các hình minh họa được dùng trên <a href="https://oreil.ly/dgEUz">website Team Topologies</a>.</p>
+</div>
+
+<p>Trên thực tế, khi hệ thống của bạn phát triển, bạn sẽ cần thay thế ô “Nhóm microservices” mang tính chung chung này bằng tên thật của các nhóm và các dịch vụ mà họ đang thực hiện. Theo thời gian, bạn cũng có thể cần ghi lại những tương tác phải diễn ra giữa các nhóm microservices. Ví dụ, nếu một microservice cần gọi một dịch vụ khác, rất có thể sẽ có một số công việc phối hợp đáng để 
+<span class="keep-together">ghi lại.</span></p>
+
+<p>Chúng ta dùng một màu cụ thể để thể hiện rằng nhóm microservices là stream-aligned. Chúng ta sẽ tiếp tục cập nhật sơ đồ này khi đi qua các bước thiết kế nhóm tiếp theo, vì vậy hãy giữ công cụ sơ đồ của bạn sẵn sàng cho các phần sau. Bạn cũng có thể muốn lưu sơ đồ để tránh mất <a data-type="indexterm" data-primary="teams" data-secondary="template" data-startref="teamtemp" id="idm46223582113336"/><a data-type="indexterm" data-primary="templates" data-secondary="teams" data-startref="temp" id="idm46223582112088"/>công việc.</p>
+
+<p>Giờ khi hai nhóm đầu tiên đã được mô hình hóa, hãy cùng xem đến nhóm nền tảng đám mây.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Platform Teams"><div class="sect2" id="idm46223582175080">
+<h2>Các Nhóm Platform</h2>
+
+<p>Các nhóm platform là một <a data-type="indexterm" data-primary="Team Topologies" data-secondary="platform" id="topplat"/><a data-type="indexterm" data-primary="platform teams" id="plattea"/>phần quan trọng của hệ thống microservices. Phần lớn công việc microservices được thực hiện bởi các nhóm độc lập, stream-aligned. Tuy nhiên, nếu không có hỗ trợ, họ sẽ phải tự mình tìm cách giải quyết rất nhiều vấn đề phát triển, kiểm thử và triển khai. Nhóm thiết kế hệ thống mang tính facilitating có thể hỗ trợ một phần trong việc ra quyết định, nhưng các nhóm microservices vẫn sẽ phải tự xử lý những phức tạp của cả một ngăn xếp công nghệ và kiến trúc.</p>
+
+<p>Đó là nơi các nhóm platform có thể phát huy tác dụng. Trong một hệ thống microservices có rất nhiều thành phần dùng chung. Một nhóm platform có thể cung cấp những thành phần dùng chung đó để các microservice sử dụng “như một dịch vụ”. Mô hình dịch vụ này cải thiện khả năng mở rộng của các thành phần platform, giảm các vấn đề phối hợp thường xảy ra khi các thành phần dùng chung bị tập trung hóa.</p>
+
+<p>Trong mô hình của mình, chúng ta đã quyết định khởi tạo một <a data-type="indexterm" data-primary="Team Topologies" data-secondary="platform" data-tertiary="cloud platform" id="idm46223582084504"/><a data-type="indexterm" data-primary="platform teams" data-secondary="cloud platform" id="idm46223582083256"/><a data-type="indexterm" data-primary="cloud platform teams" id="idm46223582082312"/>nhóm nền tảng đám mây để cung cấp hạ tầng mạng, hạ tầng ứng dụng và hạ tầng triển khai cho phần còn lại của tổ chức dưới dạng dịch vụ. Chúng ta sẽ đi vào chi tiết của dịch vụ này ở <a data-type="xref" href="ch07.html#ch-designing-infrastructure">Chương 7</a>, khi đào sâu vào thiết kế hạ tầng. Điểm mấu chốt lúc này là các nhóm trong hệ thống của chúng ta sẽ có thể tạo môi trường mới theo yêu cầu bằng các dịch vụ hạ tầng do nhóm platform cung cấp.</p>
+
+<p>Khi đã hiểu các chi tiết đó, chúng ta có thể tài liệu hóa nhóm nền tảng đám mây của mình trong một tệp tên là <em>cloud-platform-team.md</em> với các thuộc tính sau:</p>
+
+<pre data-type="programlisting" data-code-language="markdown"><code class="gh">#</code> Nhóm Nền tảng Đám mây
+
+<code class="gu">##</code> Loại Nhóm
+Platform
+
+<code class="gu">##</code> Quy mô Nhóm
+5-8 Người
+
+<code class="gu">##</code> Trách nhiệm
+<code class="k">*</code> Thiết kế và phát triển hạ tầng mạng
+<code class="k">*</code> Thiết kế và phát triển hạ tầng ứng dụng
+<code class="k">*</code> Cung cấp công cụ để xây dựng một môi trường mới
+<code class="k">*</code> Cập nhật hạ tầng mạng và hạ tầng ứng dụng khi cần</pre>
+
+<p>Hãy lưu ý rằng một trong những trách nhiệm của nhóm nền tảng đám mây là cập nhật hạ tầng mà họ đang cung cấp. Đây là một phần then chốt trong trách nhiệm của một nhóm platform. Họ cần đối xử với người dùng của nền tảng như thể họ là khách hàng. Trong mối quan hệ này, nền tảng phải được cải tiến liên tục để đáp ứng yêu cầu và kỳ vọng của khách hàng.</p>
+
+<p>Giống như trước, chúng ta sẽ thêm nhóm nền tảng đám mây vào sơ đồ Team Topology mà mình đang xây dựng. Nhưng lần này, chúng ta cần mô hình hóa một nhóm platform. Để làm điều đó, hãy vẽ một hình chữ nhật nằm ngang (một lần nữa, dùng một màu riêng; chúng tôi dùng màu xanh nhạt) bên dưới nhóm microservices và nối nó với nhóm thiết kế hệ thống, như trong <a data-type="xref" href="#cloud-platform">Hình 2-3</a>.</p>
+
+<figure><div id="cloud-platform" class="figure">
+<img src="assets/msur_0203.png" alt="Cloud Platform Team"/>
+<h6><span class="label">Hình 2-3. </span>Nhóm nền tảng đám mây cung cấp một dịch vụ</h6>
+</div></figure>
+
+<p>Hãy lưu ý rằng chúng tôi cũng đã vẽ một mũi tên nhỏ màu đen giữa nhóm platform và nhóm microservices. Điều này nhằm thể hiện rằng nhóm platform đang hiện thực mô hình <em>x</em>-as-a-service trong tương tác với nhóm microservices. Sơ đồ của chúng ta cũng cho thấy nhóm thiết kế hệ thống sẽ hỗ trợ công việc của nhóm platform. Điều này sẽ bảo đảm nền tảng phù hợp với mục tiêu và tầm nhìn của toàn hệ thống.</p>
+
+<p>Đối với mô hình “up and running” của chúng ta, chúng ta chỉ định nghĩa một nhóm platform duy nhất. Nhưng trên thực tế, rất có thể bạn sẽ phải triển khai nhiều nhóm platform để giữ quy mô nhóm ở mức dễ quản lý. Khi điều đó xảy ra, bạn cũng sẽ cần xem xét cách nhiều nhóm platform phối hợp với nhau để cung cấp dịch vụ <a data-type="indexterm" data-primary="Team Topologies" data-secondary="platform" data-startref="topplat" id="idm46223582067672"/><a data-type="indexterm" data-primary="platform teams" data-startref="plattea" id="idm46223582060872"/>cho phần còn lại của tổ chức.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" class="less_space pagebreak-before" data-pdf-bookmark="Enabling and Complicated-Subsystem Teams"><div class="sect2" id="idm46223582109624">
+<h2>Các Nhóm Enabling và Complicated-Subsystem</h2>
+
+<p>Với ba nhóm mà chúng ta đã <a data-type="indexterm" data-primary="Team Topologies" data-secondary="complicated-subsystem" data-tertiary="enabling" id="compsub"/><a data-type="indexterm" data-primary="complicated-subsystem teams" data-secondary="enabling" id="compsubteam"/>thiết kế, chúng ta đã có đủ con người để có thể phân phối một hệ thống microservices. Ngoài những năng lực cốt lõi đó, vẫn có thể tồn tại những năng lực bổ sung mà chúng ta muốn một nhóm cụ thể sở hữu. Điều đó có thể là vì chúng ta muốn cung cấp năng lực hỗ trợ cho một tập kỹ năng quan trọng nào đó. Hoặc vì có một tính năng hệ thống phức tạp cần một nhóm chuyên trách.</p>
+
+<p>Trong mô hình microservices của mình, chúng ta đã quyết định tạo ra một nhóm phát hành chuyên biệt. Nhóm bổ sung này sở hữu trách nhiệm phát hành (hoặc triển khai) microservice vào một môi trường tương tự production. Dù một nhóm microservices có thể tự triển khai dịch vụ của mình trực tiếp vào production, theo kinh nghiệm của chúng tôi, đây không phải lúc nào cũng là cách diễn ra trong thực tế.</p>
+
+<p>Đó là vì ở hầu hết tổ chức, thường luôn tồn tại thêm một bước kiểm thử và chấp nhận trước khi dịch vụ được đưa vào hoạt động thực. Thay vì triển khai trực tiếp vào môi trường production, các nhóm microservices sẽ bàn giao một container đã được đóng gói và kiểm thử. Container đó sau đó được một nhóm phát hành tự động triển khai, đồng thời điều phối các hoạt động kiểm thử, phê duyệt và triển khai cho thay đổi đó.</p>
+
+<p>Nhóm phát hành thể hiện loại nhóm complicated-subsystem. Nó chứa kiến thức chuyên biệt về quy trình phát hành, phê duyệt và triển khai, đồng thời cộng tác với các nhóm stream-aligned để làm cho công việc đó diễn ra. Để tài liệu hóa thiết kế của nhóm phát hành, hãy tạo một tệp tên là <em>release-team.md</em> với các thuộc tính sau:</p>
+
+<pre data-type="programlisting" data-code-language="markdown"><code class="gh">#</code> Nhóm Phát hành
+
+<code class="gu">##</code> Loại Nhóm
+Complicated-Subsystem
+
+<code class="gu">##</code> Quy mô Nhóm
+5-8 Người
+
+<code class="gu">##</code> Trách nhiệm
+<code class="k">*</code> Phát hành microservice lên production
+<code class="k">*</code> Điều phối phê duyệt cho các đợt phát hành</pre>
+
+<p>Tiếp theo, chúng ta sẽ thêm nhóm phát hành vào bức tranh Team Topology đang dần hình thành. Các nhóm complicated-subsystem được mô hình hóa bằng thêm một màu riêng nữa.</p>
+
+<p class="less_space pagebreak-before">Vì vậy, hãy mở sơ đồ Team Topology của bạn và thêm một hình vuông (chúng tôi tô màu đỏ) ở gần cuối hộp của nhóm microservices, như trong <a data-type="xref" href="#release-team">Hình 2-4</a>.</p>
+
+<figure><div id="release-team" class="figure">
+<img src="assets/msur_0204.png" alt="Release Team"/>
+<h6><span class="label">Hình 2-4. </span>Nhóm phát hành</h6>
+</div></figure>
+
+<p>Như chúng ta có thể thấy từ topology đang dần hình thành, một trong những đánh đổi của cách tiếp cận dùng nhóm phát hành là chi phí phối hợp mà nó mang lại. Ở quy mô lớn, điều này có thể trở thành một vấn đề lớn. Ví dụ, nếu bạn muốn phát hành hằng ngày trên nhiều microservice, nhóm phát hành sẽ rất khó điều phối toàn bộ hoạt động đó. Nếu bạn thấy mình rơi vào tình huống này, bạn sẽ cần thay đổi thiết kế nhóm và chuyển trách nhiệm triển khai sang cho từng nhóm microservices riêng lẻ.</p>
+
+<p>Nhóm phát hành là nhóm cuối cùng trong lõi của mô hình microservices của chúng ta. Nhưng để hoàn tất thiết kế, chúng ta cần xem xét những nhóm sẽ phải sử dụng các microservice của mình. Chúng ta sẽ đề cập điều đó <a data-type="indexterm" data-primary="Team Topologies" data-secondary="complicated-subsystem" data-tertiary="enabling" data-startref="compsub" id="idm46223582022360"/><a data-type="indexterm" data-primary="complicated-subsystem teams" data-secondary="enabling" data-startref="compsubteam" id="idm46223582020840"/>ngay sau đây.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Consumer Teams"><div class="sect2" id="idm46223582059208">
+<h2>Các Nhóm Tiêu thụ</h2>
+
+<p>Microservice chỉ thực sự hữu ích nếu <a data-type="indexterm" data-primary="Team Topologies" data-secondary="consumer teams" id="topconteam"/><a data-type="indexterm" data-primary="consumer teams" id="conteam"/>chúng được sử dụng. Vì vậy, việc xác định ai là bên tiêu thụ các microservice của chúng ta và cách họ sẽ tương tác với các nhóm trong hệ thống là điều đáng làm. Trong một số kiến trúc, điều đó có thể bao gồm các nhóm phát triển ứng dụng di động, nhóm phát triển web, hoặc thậm chí các tổ chức bên thứ ba. Trong mô hình của chúng ta, bên tiêu thụ chính của hệ thống microservices là nhóm API.</p>
+
+<p>Nhóm API <a data-type="indexterm" data-primary="API (application programming interface)" data-secondary="consumer teams" id="apicons"/><a data-type="indexterm" data-primary="consumer teams" data-secondary="APIs" id="consumeAPI"/>chịu trách nhiệm phơi bày các microservice của chúng ta cho các nhóm phát triển khác dưới dạng một giao diện lập trình ứng dụng (API). Ví dụ, một nhóm phát triển ứng dụng di động sẽ tương tác với API do nhóm này phát hành và sẽ không bao giờ gọi trực tiếp các microservice của chúng ta.</p>
+
+<p>Chúng ta sẽ đi vào chi tiết của API và kiến trúc ở phần sau của cuốn sách. Còn lúc này, điều quan trọng là ghi lại các thuộc tính và trách nhiệm của nhóm API. Chúng ta có thể làm điều đó bằng cách tạo một tệp tên là <em>api-team.md</em> và điền nội dung như sau:</p>
+
+<pre data-type="programlisting" data-code-language="markdown" class="less_space pagebreak-before"><code class="gh">#</code> Nhóm API
+
+<code class="gu">##</code> Loại Nhóm
+Stream-Aligned
+
+<code class="gu">##</code> Quy mô Nhóm
+5-8 Người
+
+<code class="gu">##</code> Trách nhiệm
+<code class="k">*</code> Thiết kế, phát triển và duy trì API ở ranh giới của hệ thống
+<code class="k">*</code> Kết nối API với các microservice nội bộ</pre>
+
+<p>Giống như nhóm microservices, nhóm API cũng là một nhóm stream-aligned. Đó là vì họ cần liên tục phân phối các thay đổi cho API để phản ánh nhu cầu kinh doanh và nhu cầu từ bên tiêu thụ. Một sắc thái đặc biệt của nhóm API là, vì API cần gọi tới microservice để hoạt động, nó phụ thuộc vào nhóm microservices.</p>
+
+<p>Chúng ta có thể mô hình hóa các thuộc tính tương tác này trong Team Topology bằng cách thêm một hình chữ nhật khác ở phía trên sơ đồ để biểu diễn nhóm API. Hình này nên có cùng màu với nhóm microservices (chúng tôi dùng màu vàng), vì nó cũng là một nhóm stream-aligned. Để phản ánh sự phụ thuộc giữa nhóm microservices và nhóm API, chúng ta sẽ một lần nữa dùng một mũi tên màu đen để thể hiện mô hình tương tác <em>x</em>-as-a-service. Điều này cho biết nhóm microservices sẽ cần bảo đảm các dịch vụ của họ có thể được gọi và sử dụng theo cách tự phục vụ.</p>
+
+<p>Khi hoàn tất, sơ đồ sẽ trông tương tự như <a data-type="xref" href="#api-team">Hình 2-5</a>.</p>
+
+<figure><div id="api-team" class="figure">
+<img src="assets/msur_0205.png" alt="API Team"/>
+<h6><span class="label">Hình 2-5. </span>Team Topology hoàn chỉnh với nhóm API</h6>
+</div></figure>
+
+<p>Khi nhóm cuối cùng này đã được định nghĩa và đặt vào trong bức tranh, topology của chúng ta trông khá giống với phiên bản hoàn chỉnh mà chúng tôi đã cho bạn xem ở đầu phần này. Với topology đã được xác định, chúng ta có thể thấy những điểm phối hợp chính nơi công việc đang được thực hiện. Nhìn chung, mô hình của chúng ta cho phép một cách làm việc tương đối độc lập và tự chủ. Tuy nhiên, chúng ta sẽ cần đầu tư thời gian và công sức để xây dựng nền tảng đám mây dưới dạng dịch vụ thì mô hình này mới hoạt động tốt.</p>
+
+<p>Với Team Topology cơ bản đã được xác định, chúng ta có thể thấy công việc này gắn ngược lại với mục tiêu của chương như thế nào, đó là xây dựng một mô hình vận hành <a data-type="indexterm" data-primary="Team Topologies" data-secondary="consumer teams" data-startref="topconteam" id="idm46223581978344"/><a data-type="indexterm" data-primary="consumer teams" data-startref="conteam" id="idm46223581977096"/><a data-type="indexterm" data-primary="API (application programming interface)" data-secondary="consumer teams" data-startref="apicons" id="idm46223581976152"/><a data-type="indexterm" data-primary="consumer teams" data-secondary="APIs" data-startref="consumeAPI" id="idm46223581974968"/>cho microservices.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Summary"><div class="sect2" id="idm46223582018888">
+<h2>Tóm tắt</h2>
+
+<p>Khi ghép lại với nhau, những quyết định, định nghĩa nhóm và topology mà chúng ta vừa tạo thành mô hình vận hành microservices. Với nó, chúng ta đã xác định được những nhóm cần được tạo ra, đặc điểm và trách nhiệm của từng nhóm, cũng như cách mà chúng ta kỳ vọng các nhóm sẽ phối hợp với nhau. Đây là một bước thiết kế quan trọng và nó sẽ ảnh hưởng đến phần còn lại của công việc microservices. Thực tế, mọi quyết định mà chúng ta đưa ra từ thời điểm này trở đi sẽ chịu ảnh hưởng mạnh mẽ từ mô hình vận hành mà chúng ta vừa thiết lập.</p>
+
+<p>Thành thật mà nói, chúng ta chưa đi quá sâu vào thiết kế mô hình vận hành. Trên thực tế, rất đáng để vẽ ra nhiều hơn một sơ đồ Team Topology nhằm phản ánh các kiểu chế độ tương tác khác nhau. Ví dụ, việc khắc phục sự cố trong hệ thống có thể sẽ đòi hỏi một mô hình tương tác khác với mô hình mà chúng ta đã trình bày. Tương tự, chúng ta vẫn chưa sơ đồ hóa các tương tác cần thiết để thay đổi những đầu ra mà các nhóm nền tảng đám mây, thiết kế hệ thống và phát hành đang cung cấp.</p>
+
+<p>Bên cạnh thiết kế ban đầu, mô hình vận hành cũng nên được cải tiến liên tục. Một trong những điều tuyệt vời khi ghi lại định nghĩa nhóm và topology thành tài liệu là chúng ta có thể đối xử với chúng như mã nguồn. Vì vậy, chúng ta có thể quản lý phiên bản và thay đổi khi hệ thống phát triển. Bạn thậm chí có thể muốn bổ sung thêm các tài sản thiết kế khác vào bộ sưu tập của mình. Ví dụ, bạn có thể định nghĩa các thỏa thuận mức dịch vụ cho nhóm platform và các bảng kiểm kê kỹ năng cho các nhóm stream-aligned.</p>
+
+<p>Suy cho cùng, mục tiêu của chương này là tạo ra một nền tảng cho phần còn lại của công việc thiết kế và phát triển. Cách tiếp cận gọn nhẹ của chúng ta đối với Team Topology và thiết kế nhóm đã làm được đúng điều đó. Khi đã có mô hình vận hành trong tay, chúng ta có thể chuyển sang thiết kế chính các microservice. Đó là điều chúng ta sẽ đề cập trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+</div></section></body></html>

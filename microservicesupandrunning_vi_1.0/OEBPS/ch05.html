@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Xử lý Dữ liệu</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 5. Dealing with the Data"><div class="chapter" id="ch-dealing-with-data">
+<h1><span class="label">Chương 5. </span>Xử lý Dữ liệu</h1>
+
+
+<p>Trong chương này, chúng ta sẽ tìm hiểu vì sao microservices cần “sở hữu dữ liệu của riêng mình” và điều đó có ý nghĩa gì đối với kiến trúc của bạn. Chúng ta sẽ thảo luận khi nào và bằng cách nào nên dùng những pattern quan trọng nhất cho quản lý dữ liệu trong microservices: delegate, data lake, Saga, Event Sourcing và Command Query Responsibility Segregation (CQRS). Trong khi bàn về các chủ đề quan trọng này, chúng ta cũng sẽ cố gắng minh họa chúng bằng các ví dụ thực tế sử dụng dự án mẫu của mình.</p>
+
+<p>Khi bước vào phát triển microservices trong thực tế, một trong những thách thức sớm mà hầu như ai cũng gặp là xử lý dữ liệu. Nếu không vì vô số thách thức của quản lý dữ liệu trong không gian này, việc biến các hệ thống cài đặt monolith phức tạp thành những microservice liên kết lỏng, có kích thước vừa phải và dễ quản lý hẳn đã khá dễ dàng.</p>
+
+<p>Các cân nhắc thiết kế <a data-type="indexterm" data-primary="data management" id="idm46223581244344"/>cho mô hình logic và mô hình vật lý trong việc hiện thực microservices không giống với việc thiết kế bảng dữ liệu cho các ứng dụng monolith N tầng truyền thống. Trong chương này, chúng ta sẽ thấy vì sao những khác biệt đó xuất hiện, người thực hành microservices thường dùng những pattern nào, và nên áp dụng những kỹ thuật gì để xử lý phần độ phức tạp bổ sung mà chúng ta phải đối mặt khi hiện thực các hệ thống microservices.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Independent Deployability and Data Sharing"><div class="sect1" id="idm46223581242968">
+<h1>Khả năng Triển khai Độc lập và Chia sẻ Dữ liệu</h1>
+
+<p>Trong <a data-type="xref" href="ch04.html#ch-rightsizing-microservices">Chương 4</a>, chúng ta đã nhắc rằng <a class="orm:hideurl" href="http://shop.oreilly.com/product/0636920033158.do">Sam Newman gợi ý</a> microservices nói chung nên:</p>
+
+<ul>
+<li>
+<p>Liên kết lỏng với nhau; điều này cũng có nghĩa là có thể triển khai độc lập</p>
+</li>
+<li>
+<p>Có tính kết dính cao đối với các năng lực bên trong từng microservice</p>
+</li>
+</ul>
+
+<p>Khi các dịch vụ liên kết lỏng với nhau, một thay đổi ở dịch vụ này không nên dẫn đến thay đổi ở dịch vụ khác. Hẳn bạn còn nhớ rằng lợi ích chính của kiến trúc microservices là tăng tốc độ nhưng vẫn hài hòa với an toàn và chất lượng ở quy mô lớn.<a data-type="indexterm" data-primary="independent deployability" id="idm46223581236792"/><a data-type="indexterm" data-primary="deployment" data-seealso="independent deployability" id="idm46223581236024"/> Và lợi ích này đạt được bằng cách loại bỏ, hoặc ít nhất là giảm bớt, nhu cầu phối hợp giữa các microservice. Một khía cạnh quan trọng và rất cụ thể của sự liên kết lỏng này là thứ chúng ta gọi là <em>khả năng triển khai độc lập</em>: có thể thay đổi một microservice và triển khai nó mà không cần thay đổi hay triển khai bất kỳ phần nào khác của hệ thống, hay bất kỳ microservice nào khác. Điều này cực kỳ quan trọng và trở nên rất dễ thấy nếu ta hình dung một deployment pipeline điển hình trong kiến trúc microservices trông như thế nào. Trong <a data-type="xref" href="#example-release-pipeline-and-data">Hình 5-1</a>, bạn có thể thấy một biểu diễn đồ họa đơn giản hóa của các deployment pipeline cho nhiều microservice đi qua nhiều môi trường khác nhau trên đường tiến tới <span class="keep-together">production.</span></p>
+
+<figure><div id="example-release-pipeline-and-data" class="figure">
+<img src="assets/msur_0501.png" alt="msur 0501"/>
+<h6><span class="label">Hình 5-1. </span>Ví dụ về release pipeline nhiều môi trường cho microservices</h6>
+</div></figure>
+
+<p>Quy trình phát hành mã qua deployment pipeline sẽ trở nên phức tạp và mong manh hơn rất nhiều nếu việc triển khai một microservice kéo theo hiệu ứng dây chuyền buộc phải triển khai lại các phần khác của ứng dụng. Những phụ thuộc chéo như vậy có thể làm tổn hại cả tốc độ lẫn độ an toàn của toàn bộ hệ thống. Ngược lại, nếu chúng ta có thể bảo đảm rằng luôn có thể triển khai từng microservice một cách độc lập, không phải lo về các hiệu ứng dây chuyền, thì chúng ta có thể giữ cho việc triển khai của mình vừa linh hoạt vừa an toàn.</p>
+
+<p>Có thể có nhiều lý do khiến bạn không thể làm cho việc triển khai microservices của mình độc lập, nhưng trong bối cảnh quản lý dữ liệu, thủ phạm phổ biến nhất là nhiều microservice cùng đồng sở hữu một không gian dữ liệu <a data-type="indexterm" data-primary="data management" data-secondary="data space co-ownership" id="idm46223581228712"/>. Kiểu đồng sở hữu này có thể phá vỡ tính liên kết lỏng của chúng và làm suy yếu khả năng triển khai mã một cách độc lập của chúng ta.</p>
+
+<p>Chúng ta sẽ bắt đầu khám phá các kỹ thuật để tránh tình trạng đồng sở hữu dữ liệu giữa các microservice bằng cách bàn về khái niệm dữ liệu được nhúng trong microservice ở các phần tiếp theo.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Microservices Embed Their Data"><div class="sect1" id="idm46223581226760">
+<h1>Microservices Nhúng Dữ liệu của Riêng mình</h1>
+
+<p>Trong kiến trúc monolith, việc chia sẻ <a data-type="indexterm" data-primary="data sharing" id="idm46223581225064"/><a data-type="indexterm" data-primary="data" data-secondary="embedding" id="idm46223581224360"/><a data-type="indexterm" data-primary="embedding data" id="idm46223581223416"/><a data-type="indexterm" data-primary="sharing data" data-see="data sharing" id="idm46223581222744"/>dữ liệu là một thực hành rất phổ biến. Trong các hệ thống legacy điển hình, kể cả những hệ thống có tính mô-đun hơn theo kiểu kiến trúc hướng dịch vụ (SOA), các thành phần mã cùng đồng sở hữu dữ liệu trên nhiều dịch vụ là chuyện thường thấy. Thực tế, điều đó gần như được mong đợi: dữ liệu dùng chung là một pattern chính để tích hợp các phần mô-đun hóa khác nhau của một hệ thống lớn hơn. Đôi khi khi nói đến “monolith”, người ta tưởng tượng rằng nó không có mô-đun hóa nào, rằng nó thật sự chỉ là một khối lớn không được chia thành thành phần nào cả. Điều đó không đúng. Từ lâu các lập trình viên đã biết rằng việc chia một codebase lớn thành những phần nhỏ hơn mang lại lợi ích rất lớn cho tổ chức mã và khả năng quản lý. Nhưng một thiếu sót then chốt trước thời microservices là các mô-đun mà monolith được chia thành không thể triển khai độc lập. Điều đó khiến chúng không thực sự liên kết lỏng nếu xét dưới góc độ chi phí phối hợp. Trường hợp điển hình là do sự gắn kết ở lớp dữ liệu mà các thiết kế SOA chưa bao giờ đạt được khả năng triển khai độc lập, và do đó cũng không đạt được khả năng vừa đi nhanh vừa đi an toàn ở quy mô lớn hơn.</p>
+
+<p>Hãy xem một ví dụ về cách vấn đề có thể xuất hiện. Giả sử nhiều microservice cùng chia sẻ quyền sở hữu một bảng khách hàng trong cơ sở dữ liệu, như minh họa trong <a data-type="xref" href="#ch-data-datasharing">Hình 5-2</a> ở phần <a data-type="xref" href="#Data_Embedding_Data_Delegate_Pattern">“Data Embedding và Mẫu Data Delegate”</a>. Ở đây, “ownership” có nghĩa là các microservice khác nhau cùng đọc và sửa đổi dữ liệu từ bảng dùng chung đó.</p>
+
+<p>Hãy tưởng tượng một microservice tìm kiếm chuyến bay cần thay đổi kiểu dữ liệu của một trường trong bảng dùng chung. Nếu nhóm phát triển microservice đó cứ thế thực hiện, chẳng hạn đổi từ integer sang float hoặc tương tự như vậy, thay đổi này có thể làm hỏng microservice quản lý đặt chỗ hoặc theo dõi chuyến bay, vì chúng cũng truy cập cùng bảng đó và có thể đang dựa vào giả định rằng trường ấy mang giá trị của một kiểu nhất định. Để tránh tạo ra bug, khi chúng ta thay đổi mô hình dữ liệu vì nhu cầu của microservice tìm kiếm chuyến bay, chúng ta cũng sẽ phải thay đổi tương ứng mã của microservice đặt chỗ hoặc thậm chí cả những microservice khác. Và chúng ta sẽ phải triển khai lại tất cả các microservice bị ảnh hưởng trong một nỗ lực phối hợp đồng thời. Hiệu ứng dây chuyền do lớp dữ liệu thay đổi là chuyện rất thường gặp khi nhiều thành phần cùng đồng sở hữu dữ liệu, và chúng có thể gây ra sự gắn kết đáng kể giữa các dịch vụ khác nhau, điều này rõ ràng là một vấn đề đối với <span class="keep-together">khả năng triển khai độc lập.</span></p>
+
+<p>Việc chia sẻ không gian dữ liệu là một trong những thứ giết chết khả năng phát triển độc lập và triển khai độc lập trong các hệ thống monolith. Ngược lại, trong kiến trúc microservices, khả năng triển khai độc lập được nhấn mạnh như một giá trị cốt lõi, và vì vậy việc chia sẻ dữ liệu bị cấm: microservices không bao giờ được phép cùng đồng sở hữu trách nhiệm đối với một không gian dữ liệu trong cơ sở dữ liệu. Phải luôn rất rõ microservice nào sở hữu bất kỳ dataset nào trong <a data-type="indexterm" data-primary="databases" data-secondary="dataset ownership" id="idm46223581215464"/>cơ sở dữ liệu, hay như cách chúng ta thường phát biểu nguyên tắc này: microservices phải sở hữu, tức nhúng, dữ liệu của chúng.</p>
+
+<p>Dù việc nhúng dữ liệu của riêng mình là một quy tắc mang tính phổ quát cho microservices, vẫn có một số sắc thái quan trọng của nguyên tắc này mà chúng ta cần hiểu thật rõ. Trong phần tiếp theo, chúng ta sẽ bàn chi tiết hơn về một cân nhắc như vậy.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Embedding Data Should Not Lead to an Explosion in the Number of Database Clusters"><div class="sect2" id="idm46223581213480">
+<h2>Nhúng Dữ liệu Không nên Dẫn tới Bùng nổ Số lượng Cụm Cơ sở dữ liệu</h2>
+
+<p>Khi xây dựng những ứng dụng phức tạp, chúng ta thường có thể đi đến chỗ dùng nhiều loại cơ sở dữ liệu khác nhau. Các dataset trong những <a data-type="indexterm" data-primary="embedding data" data-secondary="databases, number" id="idm46223581211816"/><a data-type="indexterm" data-primary="data" data-secondary="embedding" data-tertiary="databases, number" id="idm46223581210840"/><a data-type="indexterm" data-primary="databases" data-secondary="embedded data and" id="idm46223581209624"/><a data-type="indexterm" data-primary="database clusters" id="idm46223581208680"/>cơ sở dữ liệu đó, ví dụ như “bảng” trong cơ sở dữ liệu quan hệ, không bao giờ nên có nhiều microservice cùng đồng sở hữu. Khi bạn xây hệ thống lớn, cuối cùng bạn có thể có tới hàng trăm microservice. Vậy điều đó có nghĩa là chúng ta phải triển khai hàng trăm cụm Cassandra, Postgres, Redis hay MySQL riêng biệt hay không? Các nhóm hiện thực microservices cần sự rõ ràng về việc nên đẩy khái niệm “microservices phải nhúng dữ liệu của chúng” đi xa tới đâu. Bản thân cơ sở dữ liệu đã là những hệ thống phần mềm phức tạp; chúng không chỉ được triển khai trên một máy chủ, mà đa số cơ sở dữ liệu được triển khai trên nhiều máy chủ để có khả năng dự phòng, độ tin cậy và khả năng mở rộng, có thể là hàng chục máy chủ trải trên nhiều vùng địa lý khác nhau. Khi chúng ta đưa ra khái niệm nhúng dữ liệu, các nhóm sẽ tự hỏi liệu họ có cần tạo ra những cụm cơ sở dữ liệu khổng lồ cho từng microservice mà họ tạo ra hay không.</p>
+
+<p>Điều này có thể trở thành một vấn đề rất lớn. Nếu kiến trúc microservices đòi hỏi một số lượng khổng lồ cụm cơ sở dữ liệu, một hoặc nhiều cụm cho mỗi microservice, thì đây hẳn sẽ là phong cách kiến trúc đắt đỏ nhất trong lịch sử ngành của chúng ta, hoặc ít nhất là gần như vậy. May mắn thay, hoàn toàn không phải như thế. Tính độc lập của dữ liệu không có nghĩa là mỗi microservice phải tự triển khai một cụm cơ sở dữ liệu riêng, có khả năng mở rộng, dự phòng và phức tạp của riêng nó.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223581206024">
+<h5>Quyết định chính: Microservices Có thể Chia sẻ Cụm Cơ sở dữ liệu ở Mức Vật lý</h5>
+<p>Microservices có thể và nên chia sẻ cùng các cài đặt vật lý của cụm cơ sở dữ liệu. Miễn là các dịch vụ không bao giờ chia sẻ cùng một không gian bảng logic và không bao giờ sửa cùng một dữ liệu, thì trong thực tế việc chia sẻ ở mức cài đặt vật lý là hoàn toàn ổn.</p>
+</div></aside>
+
+<p>Tính độc lập trong quản lý dữ liệu <a data-type="indexterm" data-primary="data management" data-secondary="independence and" id="idm46223581203864"/>trước hết là chuyện không để các luồng dữ liệu “chồng lấn” lên nhau. Nó liên quan đến khả năng mang microservice của bạn đi và triển khai cùng một cài đặt cơ sở dữ liệu khác nếu cần. Nhưng bạn không nhất thiết phải triển khai từng dịch vụ với một cụm cơ sở dữ liệu khác nhau ngay từ đầu. Chi phí là một cân nhắc quan trọng, và sự đơn giản cũng vậy. Chừng nào nhiều microservice chưa cùng truy cập, đặc biệt là cùng sửa đổi, một không gian dữ liệu giống nhau, thì yêu cầu về tính độc lập của dữ liệu vẫn được giữ nguyên.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Data Embedding and the Data Delegate Pattern"><div class="sect2" id="Data_Embedding_Data_Delegate_Pattern">
+<h2>Data Embedding và Mẫu Data Delegate</h2>
+
+<p>Hãy xem một ví dụ <a data-type="indexterm" data-primary="data" data-secondary="embedding" data-tertiary="data delegate pattern and" id="embedddpatt"/><a data-type="indexterm" data-primary="embedding data" data-secondary="data delegate pattern and" id="ddpattemb"/><a data-type="indexterm" data-primary="data delegate pattern" id="ddpatt"/>trong bối cảnh hệ thống đặt chỗ trực tuyến của chúng ta. Ban đầu, chúng ta sẽ nhìn vào trường hợp hệ thống được xây theo kiến trúc monolith N tầng truyền thống. Một ứng dụng như vậy vẫn sẽ được chia thành những mô-đun khác nhau, nhỏ hơn. Các mô-đun này thậm chí còn có thể được triển khai như các dịch vụ qua mạng. Và chúng chắc chắn cũng có thể đủ nhỏ để được gọi là “micro”. Tuy nhiên, điều đó không nhất thiết khiến chúng trở thành microservices. Chúng chỉ có thể được coi là microservices nếu những thành phần này được mô-đun hóa với mục tiêu loại bỏ phối hợp, và cụ thể hơn là nếu chúng liên kết lỏng và có thể triển khai độc lập. Nếu các dịch vụ bị chia ra một cách tùy tiện và không liên kết lỏng, chúng ta không thể gọi một hệ thống như vậy là ví dụ của kiến trúc microservices.</p>
+
+<p>Trong kịch bản của chúng ta, được minh họa trong <a data-type="xref" href="#ch-data-datasharing">Hình 5-2</a>, có ba dịch vụ đều cần dữ liệu từ bảng “flights”: tìm kiếm chuyến bay, <a data-type="indexterm" data-primary="data management" data-secondary="monolithic" id="idm46223581194296"/><a data-type="indexterm" data-primary="monolithic data management" id="idm46223581193352"/>quản lý đặt chỗ và theo dõi chuyến bay.</p>
+
+<figure><div id="ch-data-datasharing" class="figure">
+<img src="assets/msur_0502.png" alt="msur 0502"/>
+<h6><span class="label">Hình 5-2. </span>Ví dụ về quản lý dữ liệu kiểu monolith, đặc trưng bởi việc chia sẻ dữ liệu</h6>
+</div></figure>
+
+<p>Rõ ràng, dựa trên phân tích ở đầu chương này, thiết kế dữ liệu như vậy là có vấn đề đối với kiến trúc microservices, vì ba dịch vụ đang cùng chia sẻ một không gian dữ liệu và do đó làm tổn hại khả năng triển khai độc lập.</p>
+
+<p>Làm sao để khắc phục tình huống này? Trường hợp cụ thể này thật ra khá dễ xử lý, và chúng ta có thể dùng kỹ thuật đơn giản là giấu dữ liệu dùng chung phía sau một dịch vụ delegate, như minh họa trong <a data-type="xref" href="#ch-data-datasharing-delegated">Hình 5-3</a>.</p>
+
+<figure><div id="ch-data-datasharing-delegated" class="figure">
+<img src="assets/msur_0503.png" alt="msur 0503"/>
+<h6><span class="label">Hình 5-3. </span>Biểu diễn đồ họa đơn giản của việc ẩn dữ liệu thông qua một delegate</h6>
+</div></figure>
+
+<p>Về bản chất, điều chúng ta làm ở đây là tuyên bố dịch vụ flight inventory là dịch vụ có thẩm quyền đối với mọi thứ liên quan đến thông tin chuyến bay. Hơn nữa, bất kỳ dịch vụ nào cần thông tin về chuyến bay hoặc cần cập nhật thông tin chuyến bay đều phải gọi tới endpoint thích hợp trong dịch vụ flight inventory. Nếu chúng ta hiện thực một lời gọi API tra cứu chuyến bay đủ linh hoạt trong dịch vụ flight inventory, thì dịch vụ tìm kiếm chuyến bay trước đây đơn giản sẽ trở thành một phần chức năng của dịch vụ flight inventory mới. Quan trọng hơn, điều này cho phép chúng ta ngừng truy cập trực tiếp bảng flights từ các dịch vụ đặt chỗ và theo dõi chuyến bay. Từ đây trở đi, mọi thông tin mà chúng cần về một chuyến bay đều có thể lấy qua dịch vụ flight inventory.</p>
+
+<p>Ví dụ, khi hệ thống đặt chỗ cần biết một chuyến bay còn đủ ghế hay không, nó sẽ gửi query tương ứng tới dịch vụ flight inventory thay vì query trực tiếp bảng flights trong cơ sở dữ liệu. Hoặc khi dịch vụ theo dõi chuyến bay cần biết hoặc cập nhật vị trí của máy bay trong một chuyến bay, nó cũng sẽ làm điều đó thông qua dịch vụ flight inventory, chứ không truy cập và sửa trực tiếp bảng flights. Theo cách này, dịch vụ flight inventory trở thành delegate giấu dữ liệu phía sau chính nó, bao đóng dữ liệu và bọc quanh dữ liệu. Điều đó sẽ chấm dứt việc nhiều dịch vụ cùng chia sẻ một bảng dữ liệu.</p>
+
+<p>Xin lưu ý rằng trong pattern này, khi nhiều dịch vụ cần truy cập cùng một dữ liệu, chúng ta không nhất thiết phải biến một trong số chúng thành delegate. Trong giải pháp trước, chúng ta đã biến dịch vụ tìm kiếm chuyến bay thành một dịch vụ inventory và để nó bao đóng bảng flights. Nhưng chúng ta cũng có thể đưa vào một dịch vụ hoàn toàn mới. Ví dụ, ta có thể tạo một dịch vụ mới tên là flight inventory và để microservice tìm kiếm chuyến bay tham chiếu tới nó, giống như cách dịch vụ đặt chỗ và theo dõi đang làm.</p>
+
+<p>Cách tiếp cận đưa vào một delegate rất thanh nhã và sẽ hiệu quả trong nhiều trường hợp khác nhau. Tiếc là không phải mọi nhu cầu chia sẻ dữ liệu đều có thể được xử lý theo cách này. Sẽ cực kỳ ngây thơ nếu nghĩ rằng pattern chúng ta vừa thảo luận có thể dùng cho mọi <span class="keep-together">kịch bản.</span> Có những use case mà chức năng cần thiết một cách chính đáng phải truy cập hoặc sửa dữ liệu vượt qua ranh giới microservice. Ví dụ của những nhu cầu như vậy có thể thấy trong bối cảnh analytics, kiểm toán dữ liệu và machine learning, cùng nhiều trường hợp khác. Các cách tiếp cận giao dịch cơ sở dữ liệu truyền thống <a data-type="indexterm" data-primary="databases" data-secondary="shared data" id="idm46223581180808"/>cũng đòi hỏi việc khóa trên dữ liệu dùng chung.</p>
+
+<p>May mắn thay, vẫn có những giải pháp hợp lý cho các use case khác đó, những giải pháp cũng có khả năng tránh được việc chia sẻ dữ liệu. Để hiểu các giải pháp trong không gian này, trước tiên hãy cùng <a data-type="indexterm" data-primary="data" data-secondary="embedding" data-tertiary="data delegate pattern and" data-startref="embedddpatt" id="idm46223581179048"/><a data-type="indexterm" data-primary="embedding data" data-secondary="data delegate pattern and" data-startref="ddpattemb" id="idm46223581177512"/><a data-type="indexterm" data-primary="data delegate pattern" data-startref="ddpatt" id="idm46223581176280"/>khám phá những pattern truy cập dữ liệu khác nhau mà chúng ta thường gặp.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Using Data Duplication to Solve for Independence"><div class="sect2" id="idm46223581201560">
+<h2>Dùng Sao chép Dữ liệu để Đạt được Tính Độc lập</h2>
+
+<p>Khi chúng ta cần quyền truy cập chỉ đọc tới <a data-type="indexterm" data-primary="data duplication, independence and" id="ddupind"/><a data-type="indexterm" data-primary="independent deployability" data-secondary="data duplication and" id="indddup"/>dữ liệu phân tán mà không có nhu cầu sửa đổi, như trong các bối cảnh enterprise analytics, machine learning, kiểm toán... thì một giải pháp phổ biến là sao chép dataset từ tất cả các microservice liên quan vào một không gian dùng chung. Không gian dùng chung này thường được gọi là <em>data lake</em>. Xin lưu ý <a data-type="indexterm" data-primary="data lakes" id="idm46223581170472"/>rằng chúng ta đang sao chép dữ liệu, chứ không phải di chuyển nó. Data lake là những nơi nhận dữ liệu chỉ đọc, có thể query. Microservices vẫn giữ vai trò là nguồn có thẩm quyền đối với các dataset tương ứng và tiếp tục là chủ sở hữu chính của dữ liệu. Chúng chỉ đơn giản stream dữ liệu liên quan vào data lake, nơi dữ liệu tích lũy lại và sẵn sàng cho việc truy vấn. Vì mục tiêu toàn vẹn dữ liệu và sự rõ ràng về nguồn gốc dữ liệu, điều quan trọng là chúng ta <em>không bao giờ</em> cập nhật dữ liệu kiểu này theo cách vận hành trực tiếp trong một chỉ mục tổng hợp như data lake. Data lake không bao giờ được coi là <a data-type="indexterm" data-primary="databases" data-secondary="data lakes and" id="idm46223581168680"/>hệ cơ sở dữ liệu bản ghi chính thức. Chúng là các kho dữ liệu tham chiếu. Ta có thể thấy một biểu diễn đồ họa tổng quát của cách thiết lập này trong <a data-type="xref" href="#ch-data-datalake">Hình 5-4</a>.</p>
+
+<figure><div id="ch-data-datalake" class="figure">
+<img src="assets/msur_0504.png" alt="msur 0504"/>
+<h6><span class="label">Hình 5-4. </span>Streaming dữ liệu từ microservices vào data lake</h6>
+</div></figure>
+
+<p>Khi dữ liệu đã được stream từ các kho dữ liệu <a data-type="indexterm" data-primary="SOR (system of record)" id="idm46223581164104"/><a data-type="indexterm" data-primary="data" data-secondary="SOR (system of record) and" id="idm46223581163400"/>system of record (SOR), chẳng hạn từ microservices sang các data sink, dữ liệu tổng hợp sẽ được lập chỉ mục theo cách tối ưu cho việc truy vấn. Việc stream dữ liệu từ SOR vào data lake thường được thực hiện bằng một hạ tầng nhắn tin <a data-type="indexterm" data-primary="messaging" data-secondary="IBM MQ" id="idm46223581162104"/><a data-type="indexterm" data-primary="messaging" data-secondary="RabbitMQ" id="idm46223581161160"/><a data-type="indexterm" data-primary="IBM MQ" id="idm46223581160216"/><a data-type="indexterm" data-primary="RabbitMQ" id="idm46223581159544"/>đáng tin cậy. IBM MQ và RabbitMQ đã được dùng nhiều năm trong bối cảnh này; <a href="https://kafka.apache.org">Kafka</a> dường như là giải pháp phổ biến nhất hiện nay, còn <a href="https://pulsar.apache.org">Apache Pulsar</a> có lẽ là cái tên mới nổi bật và đáng chú ý nhất trong không gian này.</p>
+
+<p>Data lake và các <a data-type="indexterm" data-primary="data sharing" data-secondary="indexes" id="idm46223581156920"/><a data-type="indexterm" data-primary="indexes, shared data" id="idm46223581155912"/>chỉ mục dữ liệu dùng chung có thể giải quyết nhiều use case chỉ đọc. Nhưng chúng ta nên làm gì khi dữ liệu phân tán không còn là chỉ đọc nữa? Trong phần tiếp theo, chúng ta sẽ khám phá một giải pháp cho các trường hợp mà chúng ta cần sửa đổi dữ liệu theo cách có phối hợp trên các dataset do nhiều microservice sở hữu. Chúng ta sẽ thảo luận cách hiện thực các <a data-type="indexterm" data-primary="data duplication, independence and" data-startref="ddupind" id="idm46223581154776"/><a data-type="indexterm" data-primary="independent deployability" data-secondary="data duplication and" data-startref="indddup" id="idm46223581153864"/>giao dịch phân tán trong một hệ sinh thái microservices.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Distributed Transactions and Surviving Failures"><div class="sect2" id="idm46223581152312">
+<h2>Giao dịch Phân tán và Khả năng Sống sót trước Lỗi</h2>
+
+<p>Hãy xét một ví dụ từ <a data-type="indexterm" data-primary="distributed transactions" data-secondary="failures and" id="distrans"/><a data-type="indexterm" data-primary="transactions" data-secondary="distributed" data-tertiary="failures and" id="transdist"/>dự án mẫu hệ thống đặt chỗ trực tuyến của chúng ta. Cụ thể, hãy xem điều gì xảy ra khi ai đó đặt một ghế trên chuyến bay và để hoàn tất việc đặt chỗ đó, chúng ta cần thực hiện một <em>giao dịch phân tán</em>. Đây là một cập nhật có phối hợp trên nhiều microservice phụ trách những việc như dùng dặm thưởng để thanh toán, giữ chỗ ngồi và gửi hành trình qua email cho khách hàng. Những giao dịch như vậy trải qua nhiều microservice: xử lý thanh toán bằng điểm thưởng, đặt chỗ và thông báo. Quan trọng nhất, thông thường chúng ta sẽ muốn hoặc cả ba bước cùng xảy ra, hoặc không bước nào xảy ra cả. Ví dụ, giả sử chúng ta đột nhiên phát hiện chiếc ghế được yêu cầu không còn trống nữa. Có thể khi chúng ta bắt đầu quá trình trừ dặm để thanh toán thì ghế đó còn trống, nhưng đến lúc hoàn tất quá trình thì ai đó đã đặt ghế đó mất rồi. Rõ ràng chúng ta không thể đặt cùng một ghế hai lần, nên phải cân nhắc nên làm gì trong tình huống này. Trong một hệ thống đủ bận, các race condition và lỗi kiểu này là không thể tránh khỏi, nên khi chúng xảy ra, chúng ta cần rollback toàn bộ quy trình. Tối thiểu, chắc chắn chúng ta phải hoàn lại điểm thưởng. Hãy cùng hiểu xem chúng ta sẽ phối hợp một giao dịch phân tán như vậy thế nào.</p>
+
+<p>Trong các ứng dụng monolith truyền thống, một quy trình như vừa mô tả sẽ được quản lý an toàn bằng các giao dịch cơ sở dữ liệu. Cụ thể hơn, việc này có thể được thực hiện bằng các giao dịch <a data-type="indexterm" data-primary="databases" data-secondary="ACID and" id="idm46223581145544"/>cơ sở dữ liệu được cho là thể hiện các đặc tính an toàn của ACID, kể cả khi có lỗi xảy ra. <em>ACID</em> là viết tắt của atomicity, consistency, isolation và durability. Chúng được định nghĩa như sau:</p>
+<dl>
+<dt>Atomicity</dt>
+<dd>
+<p>Các bước trong một <a data-type="indexterm" data-primary="ACID" data-secondary="atomicity" id="idm46223580914456"/><a data-type="indexterm" data-primary="atomicity (ACID)" id="idm46223580913448"/>giao dịch mang tính “tất cả hoặc không gì cả”; hoặc tất cả cùng được thực thi, hoặc không bước nào được thực thi.</p>
+</dd>
+<dt>Consistency</dt>
+<dd>
+<p>Bất kỳ giao dịch <a data-type="indexterm" data-primary="ACID" data-secondary="consistency" id="idm46223580911272"/><a data-type="indexterm" data-primary="consistency (ACID)" id="idm46223580910264"/>nào cũng phải đưa hệ thống từ một trạng thái hợp lệ sang một trạng thái hợp lệ khác.</p>
+</dd>
+<dt>Isolation</dt>
+<dd>
+<p>Việc thực thi song song <a data-type="indexterm" data-primary="ACID" data-secondary="isolation" id="idm46223580908104"/><a data-type="indexterm" data-primary="isolation (ACID)" id="idm46223580907096"/>các giao dịch khác nhau phải cho ra cùng một trạng thái như thể các giao dịch đó được thực thi tuần tự.</p>
+</dd>
+<dt>Durability</dt>
+<dd>
+<p>Một khi giao dịch đã được <a data-type="indexterm" data-primary="ACID" data-secondary="durability" id="idm46223580904904"/><a data-type="indexterm" data-primary="durability (ACID)" id="idm46223580903896"/>commit, tức thực thi hoàn toàn, thì dữ liệu sẽ không bị mất bất chấp những lỗi có thể xảy ra.</p>
+</dd>
+</dl>
+
+<p>Microservices giúp đơn giản hóa việc xây dựng hệ thống an toàn ở quy mô lớn. Tuy nhiên, điều cực kỳ quan trọng cần làm rõ là điều đó không có nghĩa bạn có thể ngăn lỗi không bao giờ xảy ra. Việc hoàn toàn tránh lỗi, dù bằng microservices hay bất kỳ cách nào khác, là điều bất khả thi. Lỗi sẽ luôn hiện diện trong một hệ thống đủ phức tạp. Điều chúng ta cần làm là tính đến chúng và tạo ra cơ chế tự phục hồi. Trong quản lý dữ liệu truyền thống, <a href="https://oreil.ly/B1OTU">giao dịch ACID</a> là một <a data-type="indexterm" data-primary="data management" data-secondary="ACID transactions" id="idm46223580901432"/>ví dụ tuyệt vời cho kiểu tư duy đó. Các hệ thống hiện thực giao dịch ACID mặc định rằng đủ loại lỗi xảy ra liên tục, vì vậy chúng ta thiết kế hệ thống lưu trữ dữ liệu của mình theo cách có khả năng chống chịu trước các lỗi đó.</p>
+
+<p>Tiếc là giao dịch ACID không phải là lời giải khả thi cho các hệ thống phân tán, nơi chức năng được rải trên nhiều microservice được triển khai độc lập qua mạng. Giao dịch ACID thường dựa vào việc dùng các khóa độc quyền. Trong khi microservices nhúng dữ liệu của chúng và không cho phép mã can thiệp vào dữ liệu của microservice khác, các khóa kiểu đó hoặc là bất khả thi, hoặc là cực kỳ tốn kém để hiện thực trong một hệ thống microservices. Thay vào đó, chúng ta cần dùng những pattern hoạt động tốt hơn trong kiến trúc phân tán. Trong phần tiếp theo, chúng ta sẽ giới thiệu một giải pháp phổ biến thuộc loại này gọi là <a data-type="indexterm" data-primary="distributed transactions" data-secondary="failures and" data-startref="distrans" id="idm46223580899096"/><a data-type="indexterm" data-primary="transactions" data-secondary="distributed" data-tertiary="failures and" data-startref="transdist" id="idm46223580897832"/>giao dịch Saga.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Distributed transactions with sagas"><div class="sect3" id="idm46223580896024">
+<h3>Giao dịch phân tán với Saga</h3>
+
+<p>Saga lần đầu được <a href="https://oreil.ly/bIRr3">Hector Garcia-Molina mô tả</a> vào năm 1987, từ rất lâu <a data-type="indexterm" data-primary="distributed transactions" data-secondary="Sagas" id="distsaga"/><a data-type="indexterm" data-primary="transactions" data-secondary="distributed" data-tertiary="Sagas" id="transsaga"/><a data-type="indexterm" data-primary="Sagas" id="saga"/>trước khi các hệ thống phân tán hiện đại trở nên phổ biến, và về sau được Clement Vasters phổ biến rộng rãi qua <a href="https://oreil.ly/f5cLI">bài viết blog năm 2012</a> như một giải pháp hiệu quả cho hệ thống phân tán.</p>
+
+<p>Với Saga, mỗi bước của một <a data-type="indexterm" data-primary="transactions" data-secondary="sagas" id="idm46223580888536"/><a data-type="indexterm" data-primary="sagas" data-secondary="transactions" id="idm46223580887560"/>giao dịch không chỉ thực hiện hành động cần thiết cho bước đó, mà còn định nghĩa một hành động bù trừ sẽ được thực thi nếu chúng ta cần rollback giao dịch vì một lỗi xảy ra ở bước sau. Một con trỏ, chẳng hạn như thông tin định vị trên hàng đợi, trỏ tới hành động bù trừ này sẽ được đăng ký trên một <em>routing slip</em> và được chuyển tiếp cho bước tiếp theo. Nếu một trong các bước sau thất bại, nó sẽ kích hoạt việc thực thi tất cả các hành động bù trừ trên routing slip, từ đó “hoàn tác” các thay đổi và đưa hệ thống về một trạng thái đã được bù trừ ở mức hợp lý.</p>
+<div data-type="tip"><h1>Saga Không Trực tiếp Tương đương với Giao dịch ACID</h1>
+<p>Saga không hứa rằng khi một giao dịch phân tán bị rollback, hệ thống nhất thiết sẽ quay trở lại trạng thái ban đầu. Thay vào đó, hệ thống nên đi tới một trạng thái hợp lý, phản ánh mức độ hoàn tác chấp nhận được của giao dịch đã hoàn thành dở dang.</p>
+</div>
+
+<p>Để hiểu điều chúng ta muốn nói bằng “trạng thái hợp lý”, hãy quay lại ví dụ ban đầu về việc đặt chỗ ngồi, như minh họa trong <a data-type="xref" href="#ch-data-saga">Hình 5-5</a>.</p>
+
+<figure><div id="ch-data-saga" class="figure">
+<img src="assets/msur_0505.png" alt="msur 0505"/>
+<h6><span class="label">Hình 5-5. </span>Một giao dịch phân tán qua nhiều microservices</h6>
+</div></figure>
+
+<p>Nếu một lần cố gắng đặt chỗ thất bại vì bất kỳ lý do gì, giao dịch đó sẽ bị hủy, nhưng chúng ta cũng sẽ kích hoạt các hành động bù trừ của các bước trước đó: thông báo và thanh toán. Hành động bù trừ của bước thanh toán là hoàn lại tiền cho khách hàng. Tùy loại thanh toán, việc hoàn tiền có thể không được xử lý ngay lập tức; vì vậy hệ thống có thể không quay về trạng thái ban đầu ngay tức thì, nhưng cuối cùng khách hàng vẫn sẽ nhận lại toàn bộ tiền của họ. Tuy vậy, sẽ vẫn có thể quan sát được rằng hai hành động thanh toán đã hủy lẫn nhau, thay vì khách hàng hoàn toàn không nhận ra bất kỳ dấu vết nào của việc đảo ngược giao dịch, vốn sẽ là mục tiêu nếu dùng giao dịch ACID.</p>
+
+<p>Trong trường hợp thông báo, mọi thứ còn có thể rối rắm hơn nữa. Chúng ta có thể không thể thu hồi theo nghĩa đen một email hoặc tin nhắn văn bản đã gửi, nên giao dịch bù trừ có thể phải là gửi một thông điệp mới báo cho khách hàng rằng thông điệp trước đó cần được bỏ qua và việc đặt chỗ thực ra đã không thành công. Trong một số hoàn cảnh, đây có thể là một lời giải hợp lý, nếu không thì chúng ta sẽ thấy ở phần sau của chương cách tránh điều này bằng cách sắp xếp thứ tự hợp lý hơn, nhưng nó không đưa hệ thống về lại trạng thái ban đầu: khách hàng sẽ thấy hai thông điệp thay vì không thấy thông điệp nào.</p>
+
+<p>Hy vọng hai ví dụ này đã giúp làm rõ một số phương diện mà giao dịch bù trừ trong <a data-type="indexterm" data-primary="sagas" data-secondary="ACID and" id="idm46223580877720"/><a data-type="indexterm" data-primary="ACID" data-secondary="sagas and" id="idm46223580876744"/>Saga khác với giao dịch ACID truyền thống.</p>
+<div data-type="note" epub:type="note"><h1>Thứ tự Sự kiện trong một Saga có Ý nghĩa</h1>
+<p>Hãy lưu ý rằng thứ tự các sự kiện trong một Saga thực sự quan trọng và cần được xây dựng cẩn thận. Thông thường, sẽ có lợi nếu đẩy những bước khó bù trừ hơn về gần cuối giao dịch. Ví dụ, nếu quy tắc nghiệp vụ cho phép, dời bước gửi thông báo xuống tận cuối quy trình có thể giúp chúng ta tránh phải gửi hàng loạt tin nhắn đính chính. Bằng cách này, đến thời điểm giao dịch đi tới bước gửi cảnh báo, chúng ta đã biết những bước trước đó đã thành công.</p>
+</div>
+
+<p class="less_space pagebreak-before">Dịch vụ delegate, data lake và Saga là những pattern mạnh mẽ. Chúng có thể giải quyết nhiều thách thức về cô lập dữ liệu trong kiến trúc microservices<a data-type="indexterm" data-primary="architecture" data-secondary="data isolation" id="idm46223580872792"/>, nhưng không phải tất cả. Trong phần tiếp theo, chúng ta sẽ bàn về một bộ đôi pattern thiết kế rất mạnh: Event Sourcing và CQRS. Chúng gần như có thể xử lý toàn bộ những gì còn lại, cung cấp một bộ công cụ hoàn chỉnh <a data-type="indexterm" data-primary="distributed transactions" data-secondary="sagas" data-startref="distsaga" id="idm46223580871448"/><a data-type="indexterm" data-primary="transactions" data-secondary="distributed" data-tertiary="sagas" data-startref="transsaga" id="idm46223580870216"/><a data-type="indexterm" data-primary="sagas" data-startref="saga" id="idm46223580868728"/>cho quản lý dữ liệu trong môi trường microservices.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Event Sourcing and CQRS"><div class="sect1" id="idm46223581226264">
+<h1>Event Sourcing và CQRS</h1>
+
+<p>Cho tới thời điểm này, chúng ta đã bàn về một số cách để tránh chia sẻ dữ liệu khi dùng mô hình dữ liệu quan hệ truyền thống. Chúng ta đã chỉ ra cách giải quyết một vài thách thức của việc chia sẻ dữ liệu, nhưng rồi trong các kịch bản nâng cao, chúng ta sẽ gặp những trường hợp mà bản thân mô hình quan hệ không còn đủ để cho phép mức độ cô lập dữ liệu và liên kết lỏng mà ta mong muốn. Một ví dụ rất phổ biến là khi các nhóm cần tạo một phép “join” trên các dataset do những microservice khác nhau sở hữu. Về bản chất, mô hình dữ liệu quan hệ được xây trên những nguyên lý nền tảng như chuẩn hóa dữ liệu, tái sử dụng dữ liệu và tham chiếu chéo các phần tử dữ liệu dùng chung; tức là về căn cơ nó thiên về ủng hộ việc chia sẻ dữ liệu.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Event Sourcing"><div class="sect2" id="idm46223580865400">
+<h2>Event Sourcing</h2>
+
+<p>Đôi khi, thay vì cố <a data-type="indexterm" data-primary="Event Sourcing" id="eventsource"/>lách qua xu hướng thiên về mô hình quan hệ, chúng ta nên chuyển sang một cách mô hình hóa dữ liệu hoàn toàn khác. Một cách tiếp cận mô hình dữ liệu cho phép tránh việc chia sẻ dữ liệu, và vì thế đã trở nên phổ biến trong microservices, được gọi là Event Sourcing.</p>
+
+<p>Một trong những lần nhắc đến Event Sourcing sớm nhất mà người ta biết đến nằm trong <a href="https://oreil.ly/BHKl9">bài viết năm 2005 của Martin Fowler</a>. Năm 2014, Greg Young đã có một bài nói chuyện hội nghị có tính khai sáng<sup><a data-type="noteref" id="idm46223580861384-marker" href="ch05.html#idm46223580861384">1</a></sup> về Event Sourcing, khởi động một làn sóng phổ biến mới và rất mạnh cho pattern này. Greg là một tiếng nói quan trọng và là một trong những người ủng hộ chủ chốt trong không gian này. Chúng ta phải biết ơn ông rất nhiều vì đã thúc đẩy Event Sourcing tiến xa hơn, cũng như mối liên hệ của nó với CQRS, một pattern quan trọng khác mà chúng ta sẽ bàn ở phần sau của chương này. Theo chính lời Greg, Event Sourcing là một cách tiếp cận mô hình hóa dữ liệu tập trung vào việc lưu trữ event thay vì trạng thái của các đối tượng miền trong hệ thống:</p>
+<blockquote>
+<p>Event Sourcing xoay quanh việc lưu trữ các fact, và bất cứ khi nào bạn có “state”, tức các mô hình cấu trúc, thì đó chỉ là đạo hàm cấp một từ các fact của bạn. Và chúng mang tính nhất thời.</p></blockquote>
+
+<p class="less_space pagebreak-before">Trong bối cảnh này, với “fact”, Young muốn nói tới những giá trị đại diện cho việc event xảy ra. Một ví dụ có thể là “giá của một <a data-type="indexterm" data-primary="Event Sourcing" data-startref="eventsource" id="idm46223580857128"/>ghế hạng phổ thông trên chuyến bay LAX–IAD đã tăng thêm 200 đô la”.</p>
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Event Sourcing in accounting and chess"><div class="sect3" id="idm46223580855832">
+<h3>Event Sourcing trong kế toán và cờ vua</h3>
+
+<p>Nếu bạn chưa từng có <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="accounting" id="idm46223580854328"/><a data-type="indexterm" data-primary="Event Sourcing" data-secondary="chess" id="idm46223580853320"/>kinh nghiệm với Event Sourcing, khái niệm này có thể tạo cảm giác hơi lạ. Phần lớn những người chưa từng làm việc với hệ thống xử lý giao dịch tần suất cao, hoặc chưa có nhiều kinh nghiệm nâng cao với microservices, có lẽ cũng chưa có trải nghiệm gì với Event Sourcing. Tuy vậy, chúng ta có thể dễ dàng tìm thấy ví dụ của các hệ thống Event Sourcing trong đời thực. Nếu bạn từng thấy một sổ nhật ký kế toán, đó là một event store kinh điển. Kế toán ghi lại từng giao dịch riêng lẻ, còn số dư là kết quả của việc cộng dồn toàn bộ các giao dịch. Kế toán không được phép chỉ ghi lại “trạng thái”; tức là họ không chỉ đơn thuần ghi số dư sau mỗi giao dịch mà không ghi lại bản thân các giao dịch. Tương tự, nếu bạn từng chơi cờ và có ghi lại một ván cờ, bạn sẽ không ghi vị trí của từng quân trên bàn cờ sau mỗi nước đi. Thay vào đó, bạn ghi riêng từng nước đi, và sau mỗi nước, trạng thái bàn cờ là kết quả tổng hợp của toàn bộ các nước đã diễn ra.</p>
+
+<p>Ví dụ, hãy xét bản ghi bảy nước đi đầu tiên của ván cờ lịch sử số 6 giữa nhà vô địch cờ vua thế giới nhiều lần Gary Kasparov và siêu máy tính Deep Blue của IBM vào năm 1997. Nếu biểu diễn bằng <a href="https://oreil.ly/txpy7">ký pháp đại số</a>, nó sẽ trông như sau:</p>
+<ol>
+<li>
+<p>e4 c6</p>
+</li>
+<li>
+<p>d4 d5</p>
+</li>
+<li>
+<p>Nc3 dxe4</p>
+</li>
+<li>
+<p>Nxe4 Nd7</p>
+</li>
+<li>
+<p>Ng5 Ngf6</p>
+</li>
+<li>
+<p>Bd3 e6</p>
+</li>
+<li>
+<p>N1f3 h6</p>
+</li>
+
+</ol>
+
+<p>Trạng thái tương ứng sau bảy nước đi đầu tiên được minh họa trong <a data-type="xref" href="#ch-data-kasparovgame">Hình 5-6</a>.</p>
+
+<p>Chúng ta có thể tái tạo hoàn toàn trạng thái của một ván cờ, chẳng hạn ván giữa Kasparov và Deep Blue, nếu có event log của toàn bộ các nước đi. Đây chính là một tương đương rất gần với Event Sourcing trong đời thực.</p>
+
+<figure><div id="ch-data-kasparovgame" class="figure">
+<img src="assets/msur_0506.png" alt="msur 0506"/>
+<h6><span class="label">Hình 5-6. </span>Deep Blue đấu với Kasparov (nguồn: <a href="https://oreil.ly/-chbm">Wikipedia</a>)</h6>
+</div></figure>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Event Sourcing versus relational modeling"><div class="sect3" id="idm46223580838296">
+<h3>Event Sourcing so với mô hình quan hệ</h3>
+
+<p>Trong các hệ thống dữ liệu truyền thống <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="versus relational modeling" id="eventmodel"/><a data-type="indexterm" data-primary="databases" data-secondary="relational" id="idm46223580835464"/><a data-type="indexterm" data-primary="relational modeling, Event Sourcing and" id="idm46223580834520"/>như cơ sở dữ liệu quan hệ, hoặc thậm chí cả các cơ sở dữ liệu NoSQL và document hiện đại hơn, chúng ta thường lưu trữ trạng thái của một thứ gì đó, chẳng hạn giá hiện tại của một ghế hạng phổ thông trên chuyến bay. Trong Event Sourcing, chúng ta vận hành theo một cách tiếp cận hoàn toàn khác. Trong Event Sourcing, chúng ta không lưu trạng thái hiện tại; thay vào đó chúng ta lưu <em>fact</em>, tức những thay đổi gia tăng của dữ liệu. Trạng thái hiện tại của hệ thống là một giá trị dẫn xuất, được tính từ chuỗi các thay đổi, tức các event.</p>
+
+<p class="less_space pagebreak-before">Hãy xem một ví dụ. Một mô hình dữ liệu quan hệ mô tả hệ thống quản lý khách hàng cho một hệ thống đặt chỗ chuyến bay có thể trông giống sơ đồ trong <a data-type="xref" href="#ch-data-event-sourcing-state">Hình 5-7</a>.</p>
+
+<figure><div id="ch-data-event-sourcing-state" class="figure">
+<img src="assets/msur_0507.png" alt="msur 0507"/>
+<h6><span class="label">Hình 5-7. </span>Ví dụ về một mô hình dữ liệu quan hệ</h6>
+</div></figure>
+
+<p>Chúng ta có thể thấy mô hình dữ liệu này có thể gồm một bảng lưu thông tin liên hệ của khách hàng, bảng này có quan hệ một-nhiều với tài khoản khách hàng và phương thức thanh toán. Đến lượt mình, mỗi bản ghi tài khoản khách hàng, chẳng hạn tài khoản doanh nghiệp so với tài khoản cá nhân, có thể trỏ tới nhiều chuyến đi đã hoàn tất, các đặt chỗ đang mở và những tùy chọn liên quan tới tài khoản đó. Dù chi tiết có thể khác nhau, đây chính là kiểu mô hình dữ liệu mà phần lớn kỹ sư phần mềm sẽ thiết kế khi dùng cơ sở dữ liệu truyền thống.</p>
+
+<p>Khi dùng Event Sourcing, chúng ta có thể thiết kế cùng mô hình dữ liệu đó dưới dạng một chuỗi event, như trong <a data-type="xref" href="#ch-data-event-sourcing-facts">Hình 5-8</a>. Ở đây bạn có thể thấy một biểu diễn các event đã dẫn đến cùng một trạng thái hệ thống như trong mô hình hướng trạng thái ở phía trước: đầu tiên, thông tin liên hệ của khách hàng được thu thập; sau đó một tài khoản cá nhân được mở, rồi tiếp theo là nhập phương thức thanh toán cá nhân. Sau một số lần đặt chỗ và các chuyến đi đã hoàn thành, có vẻ khách hàng này cũng quyết định mở thêm một tài khoản doanh nghiệp; họ thêm thông tin thanh toán và bắt đầu đặt chuyến đi bằng tài khoản mới đó. Trên đường đi, một số tùy chọn cũng được thêm và cập nhật, đưa hệ thống tới cùng trạng thái như trong <a data-type="xref" href="#ch-data-event-sourcing-state">Hình 5-7</a>, chỉ khác ở chỗ ở đây chúng ta nhìn thấy chính xác chuỗi “fact” đã dẫn tới trạng thái hiện tại, thay vì chỉ nhìn vào kết quả ở dạng biểu diễn theo trạng thái.</p>
+
+<p>Như vậy, chuỗi event trong sơ đồ cho ta cùng một trạng thái như trong mô hình dữ liệu quan hệ. Nó tương đương với những gì ta có ở đó, chỉ là hình thức biểu diễn này trông rất, rất khác. Chẳng hạn, bạn có thể nhận ra nó trông đồng nhất hơn nhiều. Có ít hơn đáng kể những quyết định mang tính chủ quan phải đưa ra về các loại thực thể khác nhau và mối quan hệ giữa chúng. Event Sourcing ở một khía cạnh nào đó đơn giản hơn nhiều ở chỗ bạn chỉ có một loạt các event nghiệp vụ xảy ra, rồi từ đó tính toán trạng thái hiện tại như một giá trị dẫn xuất từ các event này.</p>
+
+<figure><div id="ch-data-event-sourcing-facts" class="figure">
+<img src="assets/msur_0508.png" alt="msur 0508"/>
+<h6><span class="label">Hình 5-8. </span>Ví dụ về một mô hình dữ liệu theo Event Sourcing</h6>
+</div></figure>
+
+<p>Không chỉ trực quan và dễ dự đoán hơn, Event Sourcing còn không có các quan hệ tham chiếu giữa những thực thể khác nhau. Nếu muốn thực hiện việc tách biệt dữ liệu một cách rất trực diện ở đây, tất cả những gì chúng ta cần làm là nói rằng mỗi loại event được sở hữu bởi một microservice khác nhau, và thế là chúng ta có thể làm vậy để tránh chia sẻ dữ liệu. Ví dụ, chúng ta có thể có một microservice chuyên về thông tin nhân khẩu học của khách hàng, và “customer info entered” sẽ là một event rất tự nhiên thuộc về system of record <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="versus relational modeling" data-startref="eventmodel" id="idm46223580821240"/>đó.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="What does an event look like?"><div class="sect3" id="idm46223580819672">
+<h3>Một event trông như thế nào?</h3>
+
+<p>Bây giờ khi hy vọng rằng chúng ta đã có một trực giác đủ tốt <a data-type="indexterm" data-primary="data modeling, Event Sourcing and" id="idm46223580818136"/><a data-type="indexterm" data-primary="data management" data-secondary="Event Sourcing and" id="idm46223580817368"/><a data-type="indexterm" data-primary="Event Sourcing" data-secondary="data modeling and" id="idm46223580816424"/><a data-type="indexterm" data-primary="Event Sourcing" data-secondary="data management and" id="idm46223580815480"/>về Event Sourcing và cách nó hoạt động, hãy đào sâu thêm một chút vào việc mô hình hóa dữ liệu và quản lý dữ liệu trong Event Sourcing trông như thế nào. Đây là cách tiếp cận ghi lại chuỗi sự kiện. Trạng thái chỉ là thứ bạn tính ra từ các event đó, tức trạng thái là một hàm của event. Nghe hơi có vẻ toán học, nhưng rốt cuộc một event trông ra sao? Thật ra event rất đơn giản. Nếu nhìn vào “hình dạng” của một cấu trúc dữ liệu event, tất cả những gì nó cần chỉ là ba phần.</p>
+
+<p>Đầu tiên, event cần một dạng định danh duy nhất nào đó. Ví dụ, bạn có thể dùng universally unique identifier (UUID), vì chúng là duy nhất trên toàn cục, và tính duy nhất đó rõ ràng rất hữu ích trong các hệ thống phân tán. Event cũng cần có loại event để chúng ta không nhầm lẫn giữa các kiểu event khác nhau. Và sau đó chỉ còn là dữ liệu, bất kỳ dữ liệu nào liên quan đến loại event đó:</p>
+
+<pre data-type="programlisting" data-code-language="js"><code class="p">{</code>
+  <code class="s2">"eventId"</code> <code class="o">:</code> <code class="s2">"afb2d89d-2789-451f-857d-80442c8cd9a1"</code><code class="p">,</code>
+  <code class="s2">"eventType"</code> <code class="o">:</code> <code class="s2">"priceIncreased"</code><code class="p">,</code>
+  <code class="s2">"data"</code> <code class="o">:</code> <code class="p">{</code>
+    <code class="s2">"amount"</code> <code class="o">:</code> <code class="mf">120.99</code><code class="p">,</code>
+    <code class="s2">"currency"</code> <code class="o">:</code> <code class="s2">"USD"</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Các quyết định thiết kế mang tính kỹ thuật trở nên khá thẳng thắn khi làm việc với event. Phần lớn công sức dồn vào việc mô tả đúng các trường của event có liên quan đến miền, dựa trên logic nghiệp vụ. Sẽ có ít hơn nhiều kiểu quyết định chủ quan về hình dạng bảng và mối quan hệ giữa bảng mà chúng ta thường phải xử lý trong cách tiếp cận quan hệ.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect3" data-pdf-bookmark="Calculating current state with projections"><div class="sect3" id="idm46223580733576">
+<h3>Tính trạng thái hiện tại bằng projection</h3>
+
+<p>Điều gì xảy ra khi chúng ta thực sự cần <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="projections" id="idm46223580732328"/><a data-type="indexterm" data-primary="projections (Event Sourcing)" id="idm46223580731352"/>tính ra trạng thái tại một thời điểm, chẳng hạn trạng thái hiện tại, của một thứ gì đó? Khi ấy chúng ta chạy thứ mà trong Event Sourcing được gọi là <em>projection</em>. Projection cho chúng ta trạng thái dựa trên các event, và chúng cũng khá đơn giản. Để chạy một projection, chúng ta cần một hàm projection. Hàm projection nhận trạng thái hiện tại và một event mới để tính ra trạng thái mới.</p>
+
+<p>Ví dụ, một hàm projection <code>priceUp</code> cho giá vé máy bay có thể trông như sau:</p>
+
+<pre data-type="programlisting" data-code-language="js"><code class="kd">function</code> <code class="nx">priceUp</code><code class="p">(</code><code class="nx">state</code><code class="p">,</code> <code class="nx">event</code><code class="p">)</code> <code class="p">{</code>
+  <code class="nx">state</code><code class="p">.</code><code class="nx">increasePrice</code><code class="p">(</code><code class="nx">event</code><code class="p">.</code><code class="nx">amount</code><code class="p">)</code>
+<code class="p">}</code></pre>
+
+<p>Nó sẽ tương đương với một câu truy vấn SQL kiểu <code>UPDATE prices SET price=…</code> trong mô hình quan hệ. Nếu chúng ta cũng có một hàm projection giảm giá tương ứng và muốn tính giá, tức trạng thái, tại một thời điểm nào đó, thì chúng ta có thể chạy projection bằng cách gọi các hàm projection cho mọi event liên quan, như sau:</p>
+
+<pre data-type="programlisting" data-code-language="js"><code class="kd">function</code> <code class="nx">priceUp</code><code class="p">(</code><code class="nx">state</code><code class="p">,</code> <code class="nx">event</code><code class="p">)</code> <code class="p">{</code>
+  <code class="nx">state</code><code class="p">.</code><code class="nx">increasePrice</code><code class="p">(</code><code class="nx">event</code><code class="p">.</code><code class="nx">amount</code><code class="p">)</code>
+<code class="p">}</code>
+
+<code class="kd">function</code> <code class="nx">priceDown</code><code class="p">(</code><code class="nx">state</code><code class="p">,</code> <code class="nx">event</code><code class="p">)</code> <code class="p">{</code>
+  <code class="nx">state</code><code class="p">.</code><code class="nx">decreasePrice</code><code class="p">(</code><code class="nx">event</code><code class="p">.</code><code class="nx">amount</code><code class="p">)</code>
+<code class="p">}</code>
+
+<code class="kd">let</code> <code class="nx">price</code> <code class="o">=</code> <code class="nx">priceUp</code><code class="p">(</code><code class="nx">priceUp</code><code class="p">(</code><code class="nx">priceDown</code><code class="p">(</code><code class="nx">s</code><code class="p">,</code><code class="nx">e</code><code class="p">),</code><code class="nx">e</code><code class="p">),</code><code class="nx">e</code><code class="p">);</code></pre>
+
+<p>Nếu bạn từng làm việc với lập trình hàm, có thể bạn sẽ nhận ra rằng trạng thái hiện tại chính là <em>left fold</em> của các event đã xảy ra cho đến thời điểm hiện tại. Hãy lưu ý rằng bằng cách dùng Event Sourcing, bạn không chỉ có thể tính trạng thái hiện tại mà còn có thể tính trạng thái tại bất kỳ thời điểm nào trong quá khứ. Năng lực này mở ra vô số khả năng cho các bài toán phân tích tinh vi, nơi bạn có thể đặt những câu hỏi như: “Được rồi, tôi biết trạng thái của thực thể <em>bây giờ</em> là gì, nhưng trạng thái của nó vào một ngày trong quá khứ mà tôi quan tâm thì sao?” Sự linh hoạt này có thể trở thành một trong những lợi ích rất mạnh của Event Sourcing nếu bạn thường xuyên cần trả lời những câu hỏi như vậy.</p>
+</div></section>
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" class="less_space pagebreak-before" data-pdf-bookmark="Improving Performance with Rolling Snapshots"><div class="sect2" id="idm46223579032536">
+<h2>Cải thiện Hiệu năng với Rolling Snapshot</h2>
+
+<p>Một điều cần lưu ý ở đây là <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="rolling snapshots" id="idm46223579030856"/><a data-type="indexterm" data-primary="rolling snapshots" id="idm46223579029880"/>projection có thể tốn kém về mặt tính toán. Nếu một giá trị là trạng thái hiện tại và nó là kết quả của một chuỗi hàng nghìn lần thay đổi trạng thái, như số dư tài khoản ngân hàng, thì mỗi khi bạn cần giá trị số dư hiện tại, liệu bạn có muốn tính lại mọi thứ từ đầu không? Bạn hoàn toàn có thể lập luận rằng cách tiếp cận như vậy chậm và lãng phí thời gian cũng như tài nguyên tính toán. Nó cũng không thể tức thời như việc chỉ đơn giản lấy ra trạng thái hiện tại. Điều đó là đúng; tuy nhiên, chúng ta có thể tối ưu cho tốc độ mà không nhất thiết phải thay đổi cách tiếp cận. Thay vì tính lại mọi thứ từ đầu, chẳng hạn từ lúc mở tài khoản ngân hàng, chúng ta có thể liên tục lưu các giá trị trung gian trên đường đi, rồi sau này tính trạng thái rất nhanh từ snapshot gần nhất. Điều đó sẽ tăng tốc tính toán một cách đáng kể.</p>
+
+<p>Tùy vào cách hiện thực event store, việc chụp snapshot các giá trị trung gian tại nhiều mốc thời gian khác nhau là chuyện phổ biến. Chọn thời điểm snapshot phù hợp thế nào có thể phụ thuộc vào miền của ứng dụng. Ví dụ, trong hệ thống ngân hàng, bạn có thể snapshot số dư tài khoản vào ngày cuối cùng của mỗi tháng, để nếu cần số dư vào ngày 15 tháng 1 năm 2020, bạn đã có sẵn snapshot từ ngày 31 tháng 12 năm 2019 và chỉ cần tính projection cho hai tuần, thay vì phải tính cho toàn bộ vòng đời của tài khoản ngân hàng.</p>
+
+<p>Trong Event Sourcing, các projection đã lưu thường được gọi là <em>rolling snapshot</em>. Chi tiết của việc bạn hiện thực rolling snapshot và projection ra sao có thể phụ thuộc vào bối cảnh ứng dụng. Ví dụ, khi dùng rolling snapshot theo tháng cho ví dụ ứng dụng ngân hàng phía trên, điều đó hoàn toàn hợp lý vì cách tiếp cận này khá khớp với những gì diễn ra trong đời thực. Ngân hàng tính nhiều loại số dư khác nhau vào cuối tháng, cuối quý và cuối năm; điều này được gọi là “closing the books”. Bạn nên luôn cố tìm ra những <em>mốc thời gian tự nhiên</em> trong miền của chính mình và căn chỉnh snapshot theo những mốc đó.</p>
+
+<p>Ở phần sau của chương này, chúng ta sẽ thấy rằng với một pattern gọi là Command Query Responsibility Segregation (CQRS), chúng ta <a data-type="indexterm" data-primary="CQRS (Command Query Responsibility Segregation)" id="idm46223579025016"/>có thể làm được nhiều hơn là chỉ cache trạng thái trong rolling snapshot.</p>
+
+<p>Sau khi đã có hiểu biết và sự trân trọng dành cho Event Sourcing, hãy tìm hiểu thêm về cách hiện thực nó. Bản thân event store sẽ trông như thế nào? Và chúng ta sẽ bắt tay vào hiện thực nó ra sao? Chúng ta sẽ trả lời các câu hỏi đó trong phần tiếp theo.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" class="less_space pagebreak-before" data-pdf-bookmark="Event Store"><div class="sect2" id="idm46223579023304">
+<h2>Event Store</h2>
+
+<p>Event store có thể là những <a data-type="indexterm" data-primary="event stores" id="eventstore"/>hệ thống tương đối đơn giản. Bạn có thể dùng nhiều loại hệ thống lưu trữ dữ liệu khác nhau để hiện thực nó. Những tệp đơn giản trên filesystem, bucket của Amazon Simple Storage Service (S3), hoặc bất kỳ hệ lưu trữ cơ sở dữ liệu nào có thể lưu trữ đáng tin cậy một chuỗi bản ghi dữ liệu, đều có thể làm được việc đó. Giao diện của một event store cần hỗ trợ ba chức năng cơ bản:</p>
+
+<ul>
+<li>
+<p>Khả năng lưu event mới và gán đúng thứ tự để chúng ta có thể lấy event theo đúng trình tự đã được lưu</p>
+</li>
+<li>
+<p>Khả năng thông báo cho những subscriber đang xây projection về các event mới mà họ quan tâm, đồng thời hỗ trợ <a href="https://oreil.ly/WZ9Ss">Competing Consumers pattern</a></p>
+</li>
+<li>
+<p>Khả năng lấy <em>N</em> event sau event <em>X</em> cho một loại event cụ thể, phục vụ các luồng đối soát; tức là tính toán lại trong trường hợp projection bị mất, bị hỏng hoặc bị nghi ngờ</p>
+</li>
+</ul>
+
+<p>Vì vậy, về cốt lõi, giao diện cơ bản của một event store chỉ gồm hai <span class="keep-together">hàm:</span></p>
+
+<pre data-type="programlisting" data-code-language="js"><code class="nx">save</code><code class="p">(</code><code class="nx">x</code><code class="p">)</code>
+<code class="nx">getNAfterX</code><code class="p">()</code></pre>
+
+<p>Ngoài ra, còn có một dạng hệ thống thông báo đủ vững chắc cho phép bên tiêu thụ subscribe vào event. Với “vững chắc”, chúng tôi muốn nói là phải phù hợp với Competing Consumers pattern. Pattern này quan trọng vì bất kỳ hệ thống nào đang xây projection từ các event của bạn cũng rất có thể sẽ muốn có nhiều instance client “lắng nghe” các event, vừa để tăng tính dự phòng vừa để phục vụ khả năng mở rộng. Bộ thông báo của chúng ta cần xử lý hợp lý việc giao mỗi event đúng một lần tới một instance listener duy nhất, để tránh <a data-type="indexterm" data-primary="event duplication" id="idm46223578951576"/><a data-type="indexterm" data-primary="duplicating events" id="idm46223578950968"/>việc vô tình nhân đôi event dẫn tới hỏng dữ liệu. Có hai cách tiếp cận bạn có thể dùng ở đây:</p>
+<ol>
+<li>
+<p>Dùng một hiện thực hàng đợi thông điệp vốn đã cung cấp những bảo đảm như vậy cho bên tiêu thụ của nó; ví dụ <a href="https://kafka.apache.org">Apache Kafka</a>.</p>
+</li>
+<li>
+<p>Cho phép bên tiêu thụ đăng ký các HTTP endpoint dưới dạng callback. Gọi callback endpoint cho từng event mới và để bộ cân bằng tải ở phía consumer xử lý việc phân phối công việc.</p>
+</li>
+
+</ol>
+
+<p>Không cách tiếp cận nào vốn dĩ tốt hơn cách còn lại. Một bên là push-based, bên kia là pull-based, và tùy theo bạn đang làm gì, bạn có thể thích cách này hơn cách kia.</p>
+<div data-type="note" epub:type="note" class="less_space pagebreak-before"><h1>Hãy Xem một Bản Hiện thực Mẫu</h1>
+<p>Trong quá trình viết cuốn sách này, chúng tôi đã công bố một <a href="https://oreil.ly/LPD8y">bản hiện thực tham chiếu mang tính quan điểm</a> của một skeleton event store trên GitHub mà bạn có thể xem, thử nghiệm hoặc đóng góp vào đó.</p>
+</div>
+
+<p>Để hiện thực projection một cách vững chắc, các hệ thống Event Sourcing thường dùng một pattern bổ trợ mang tên CQRS. Trong phần tiếp theo, chúng ta sẽ khám phá những ý tưởng đằng sau nó và cố gắng <a data-type="indexterm" data-primary="event stores" data-startref="eventstore" id="idm46223579002984"/>nắm được bản chất của nó.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Command Query Responsibility Segregation"><div class="sect2" id="idm46223579022680">
+<h2>Command Query Responsibility Segregation</h2>
+
+<p>Projection cho các hệ thống Event Sourcing nâng cao <a data-type="indexterm" data-primary="CQRS (Command Query Responsibility Segregation)" id="cqrs"/><a data-type="indexterm" data-primary="queries" data-seealso="CQRS" id="idm46223578996456"/>thường được xây bằng Command Query Responsibility Segregation (CQRS). Ý tưởng của CQRS là cách chúng ta truy vấn hệ thống và cách chúng ta lưu trữ dữ liệu không nhất thiết phải giống nhau. Khi nói về event store và sự đơn giản của nó, có một điều chúng ta đã bỏ qua: giao diện đơn giản với hai hàm <code>save(x)</code> và <code>getNAfterX()</code> sẽ không cho phép chúng ta chạy những truy vấn phức tạp trên dữ liệu đó. Chẳng hạn, nó sẽ không cho phép chúng ta chạy truy vấn hỏi tất cả những đặt chỗ mà hành khách đã đổi ghế trong 24 giờ qua. Những truy vấn kiểu đó không được hiện thực trực tiếp trên event store, để event store giữ được sự đơn giản và tập trung của nó. Event Sourcing chỉ nên giải quyết bài toán lưu trữ event log một cách có thẩm quyền và đáng tin cậy. Với các truy vấn nâng cao, mỗi khi event xảy ra, chúng ta sẽ thông báo cho một hệ thống khác đang subscribe vào event store, và hệ thống đó có thể bắt đầu xây những chỉ mục được tối ưu cho việc truy vấn dữ liệu theo bất kỳ cách nào mà nó cần. Ý tưởng đằng sau CQRS là bạn không nên cố dùng cùng một hệ thống để giải quyết đồng thời việc lưu trữ dữ liệu, quyền sở hữu dữ liệu và khả năng truy vấn dữ liệu. Những mối quan tâm này nên được giải quyết một cách độc lập.</p>
+
+<p>Lợi ích lớn khi dùng Event Sourcing và CQRS là chúng cho phép chúng ta thiết kế những thành phần có độ hạt rất nhỏ và liên kết lỏng. Với Event Sourcing, chúng ta có thể tạo ra những microservice bé tới mức chúng chỉ quản lý một loại event hoặc chỉ chạy một báo cáo duy nhất. Việc sử dụng có chủ đích Event Sourcing và CQRS có thể đưa chúng ta lên cấp độ tiếp theo của độ hạt tự trị trong kiến trúc microservices. Vì thế, chúng đóng một vai trò then chốt trong phong cách kiến trúc này.</p>
+<div data-type="warning" epub:type="warning"><h1>Đừng Lạm dụng Event Sourcing và CQRS như một Liều Thuốc Chữa Bách bệnh</h1>
+<p>Hãy cẩn thận đừng lạm dụng Event Sourcing và CQRS. Bạn chỉ nên dùng chúng khi thật sự cần thiết, vì chúng có thể làm phần hiện thực của bạn phức tạp hơn. Chúng không nên được dùng như cách tiếp cận mô hình dữ liệu duy nhất cho toàn bộ hệ thống. Vẫn còn rất nhiều use case mà mô hình quan hệ truyền thống đơn giản hơn nhiều và nên được sử dụng.</p>
+</div>
+
+<p>Event Sourcing và CQRS có thể giúp bạn tránh chia sẻ dữ liệu giữa các microservice trong những trường hợp phức tạp nơi bạn cần join dữ liệu vượt qua ranh giới dịch vụ, nhưng chúng đi kèm với cái giá là độ phức tạp. Hãy luôn cân nhắc những cách tiếp cận khác đơn giản hơn, chẳng hạn dịch vụ delegate mà chúng ta đã mô tả trong chương này, trước khi tìm tới Event Sourcing cho một microservice cụ thể.</p>
+
+<p>Bây giờ khi đã có được một hiểu biết nền tảng vững chắc về Event Sourcing và CQRS, hãy cùng xem những pattern này còn có thể và nên được dùng ở đâu khác, vượt ra ngoài việc chỉ hỗ trợ sự liên kết dữ liệu lỏng <a data-type="indexterm" data-primary="CQRS (Command Query Responsibility Segregation)" data-startref="cqrs" id="idm46223578989304"/>phục vụ nhu cầu nhúng dữ liệu của <span class="keep-together">microservices.</span></p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Event Sourcing and CQRS Beyond Microservices"><div class="sect1" id="idm46223578987512">
+<h1>Event Sourcing và CQRS Vượt ra ngoài Microservices</h1>
+
+<p>Event Sourcing và CQRS chắc chắn có thể vô giá trong việc tránh chia sẻ dữ liệu và đạt được sự liên kết lỏng giữa các microservice. Tuy nhiên, lợi ích của chúng không chỉ giới hạn ở liên kết lỏng hay thậm chí chỉ trong kiến trúc microservices. Event Sourcing và CQRS là những công cụ mô hình hóa dữ liệu rất mạnh, có thể mang lại lợi ích cho nhiều loại hệ thống khác nhau.</p>
+
+<p>Hãy xét Event Sourcing và CQRS trong mối liên hệ với <a data-type="indexterm" data-primary="Event Sourcing" data-secondary="CAP theorem and" id="idm46223578929752"/><a data-type="indexterm" data-primary="CQRS (Command Query Responsibility Segregation)" data-secondary="CAP theorem and" id="idm46223578928776"/><a data-type="indexterm" data-primary="CAP theorem" id="captheo"/>định lý consistency, availability và partition tolerance (CAP). Định lý này nổi tiếng vì được Eric Brewer nêu ra dưới dạng một phỏng đoán trong <a href="https://oreil.ly/hiQMB">bài keynote năm 2000</a> của ông tại Symposium on Principles of Distributed Computing. Ở dạng nguyên gốc, định lý phát biểu rằng bất kỳ hệ thống dữ liệu dùng chung phân tán nào cũng chỉ có thể sở hữu hai trong ba thuộc tính mong muốn <span class="keep-together">sau:</span></p>
+<dl>
+<dt>Tính nhất quán</dt>
+<dd>
+<p>Có một cái nhìn thống nhất về trạng thái mới nhất của dữ liệu</p>
+</dd>
+<dt>Tính sẵn sàng</dt>
+<dd>
+<p>Khả năng luôn đọc hoặc cập nhật dữ liệu</p>
+</dd>
+<dt>Khả năng chịu phân mảnh</dt>
+<dd>
+<p>Có được dữ liệu chính xác ngay cả khi xảy ra phân mảnh mạng</p>
+</dd>
+</dl>
+
+<p>Qua thời gian, người ta làm rõ rằng không phải mọi tổ hợp CAP đều hợp lệ.<sup><a data-type="noteref" id="idm46223578920200-marker" href="ch05.html#idm46223578920200">2</a></sup> Với một hệ thống phân tán, chúng ta buộc phải tính đến partition tolerance vì không thể tránh các phân mảnh mạng, và như vậy lựa chọn sẽ trở thành sự đánh đổi giữa consistency và availability. Nhưng nếu chúng ta thật sự cần cả hai thì sao? Nghe có vẻ trẻ con nếu cứ khăng khăng muốn có tất cả trong khi một định lý đã được chứng minh bằng toán học, thứ mà CAP cuối cùng đã trở thành, lại nói rằng bạn không thể có tất cả.</p>
+
+<p>Nhưng có một điểm mấu chốt ở đây. Định lý CAP nói với chúng ta rằng một hệ thống đơn lẻ có chia sẻ dữ liệu không thể vi phạm định lý đó. Tuy nhiên, nếu dùng CQRS, chúng ta sử dụng nhiều hệ thống và giảm thiểu việc chia sẻ dữ liệu thì sao? Trong trường hợp như vậy, chúng ta có thể ưu tiên consistency trong event store và ưu tiên availability trong các chỉ mục truy vấn. Dĩ nhiên, điều đó có nghĩa là hệ thống dùng cho các chỉ mục truy vấn có thể sai về consistency, nhưng chúng không phải là nguồn có thẩm quyền, nên nếu cần chúng ta luôn có thể lập chỉ mục lại từ event store. Theo một nghĩa nào đó, điều này thật sự cho phép chúng ta có được điều tốt nhất từ cả hai phía.</p>
+
+<p>Lợi ích lớn thứ hai của cách tiếp cận Event Sourcing và CQRS liên quan đến khả năng kiểm toán. Khi dùng mô hình dữ liệu quan hệ, chúng ta cập nhật dữ liệu ngay tại chỗ. Ví dụ, nếu thấy địa chỉ hay số điện thoại của khách hàng bị sai, chúng ta sẽ cập nhật nó trong bảng tương ứng. Nhưng điều gì xảy ra nếu về sau khách hàng tranh chấp lại thông tin đó? Với mô hình quan hệ, chúng ta có thể đã mất lịch sử và rơi vào tình trạng bất lực. Với Event Sourcing, chúng ta có một lịch sử hoàn hảo của mọi thay đổi được lưu giữ an toàn, và có thể nhìn thấy giá trị dữ liệu khách hàng ở bất kỳ thời điểm nào trong quá khứ, cũng như nó đã được cập nhật bằng cách nào và vào lúc nào.</p>
+
+<p>Một số độc giả có thể chỉ ra rằng ngay cả khi dùng mô hình quan hệ, điều đó không nhất thiết có nghĩa là họ mất lịch sử dữ liệu. Họ có thể đang ghi log mọi thay đổi vào một tệp nào đó, hoặc vào những hệ thống như <a href="https://oreil.ly/C3oY-">Splunk</a> hay <a href="https://oreil.ly/80teW">ELK</a>. Vậy logging khác Event Sourcing ở điểm nào? Có phải chúng ta chỉ đang nói về kiểu logging quen thuộc rồi gắn cho nó một cái tên thời thượng mới hay không? Câu trả lời là hoàn toàn không. Mọi thứ quy về câu hỏi: hệ thống nào là nguồn chân lý trong kiến trúc của chúng ta? Tôi sẽ “tin” ai nếu log của tôi mâu thuẫn với trạng thái hiện tại? Trong Event Sourcing, “trạng thái” được tính từ các event, nên câu trả lời là hiển nhiên. Với log kiểu Splunk thì không phải vậy, vì thế nguồn chân lý của bạn rất có thể vẫn là mô hình quan hệ, ngay cả khi thỉnh thoảng bạn đối chiếu thêm log để săn bug. Khi log event đáng tin cậy của bạn chính là nguồn chân lý, lúc đó bạn đang dùng Event Sourcing như cách tiếp cận mô hình dữ liệu của mình. Còn nếu không, thì bạn không dùng, bất kể bạn đang tạo ra bao nhiêu log đi nữa.<a data-type="indexterm" data-primary="CAP theorem" data-startref="captheo" id="idm46223578912072"/></p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Summary"><div class="sect1" id="idm46223578910776">
+<h1>Tóm tắt</h1>
+
+<p>Trong chương này, chúng ta đã bàn về một khái niệm nền tảng của kiến trúc microservices: cô lập dữ liệu và nguyên tắc nhúng dữ liệu vào các microservice tương ứng. Chúng ta cũng đã khám phá cách nguyên tắc này, dù cần thiết cho liên kết lỏng và khả năng triển khai độc lập, vẫn có thể dẫn chúng ta tới những thách thức quản lý dữ liệu đáng kể nếu tiếp cận chúng bằng các lời giải mô hình dữ liệu truyền thống, tức những lời giải được thiết kế cho các ứng dụng monolith N tầng. Xa hơn nữa, chúng ta đã đi qua một bộ công cụ giải pháp hoàn chỉnh cho các thách thức vừa mô tả dưới dạng những pattern mạnh mẽ, đã được kiểm chứng theo thời gian, có thể đối diện trực tiếp với các thách thức đó. Cuối cùng nhưng không kém phần quan trọng, chúng ta đã giới thiệu một cách tiếp cận mô hình dữ liệu mới, khác biệt rõ rệt với <span class="keep-together">mô hình quan hệ</span> truyền thống. Chúng ta cũng đã giải thích lợi ích cũng như các bối cảnh sử dụng phù hợp của Event Sourcing và CQRS, kể cả vượt ra ngoài nhu cầu riêng của microservices.</p>
+
+<p>Với nền tảng kiến thức mạnh mẽ này trong tay, giờ chúng ta có thể đi sâu vào việc hiện thực dự án mẫu của mình. Trước tiên, chúng ta sẽ bắt đầu bằng việc thiết lập hạ tầng và deployment pipeline tự động hóa, được container hóa cho dự án. Bước này có vai trò then chốt trong việc xử lý độ phức tạp vận hành của một dự án dựa trên microservices. Sau đó, chúng ta sẽ chia sẻ hướng dẫn chi tiết về cách tạo ra một không gian làm việc dành cho lập trình viên vừa hiệu quả vừa có thể lặp lại, một nền móng quan trọng để tạo nên trải nghiệm phát triển dễ chịu trong môi trường không đồng nhất. Cuối cùng, chúng ta sẽ thử hiện thực mã cho một vài microservice trong dự án mẫu, tận dụng toàn bộ những hiểu biết mà chúng ta đã tích lũy cho tới thời điểm này.</p>
+</div></section>
+
+
+
+
+
+
+
+<div data-type="footnotes"><p data-type="footnote" id="idm46223580861384"><sup><a href="ch05.html#idm46223580861384-marker">1</a></sup> Greg Young, “CQRS and Event Sourcing,” Code on the Beach 2014, <a href="https://oreil.ly/5-d5u"><em class="hyperlink">https://oreil.ly/5-d5u</em></a>.</p><p data-type="footnote" id="idm46223578920200"><sup><a href="ch05.html#idm46223578920200-marker">2</a></sup> Eric Brewer, “CAP Twelve Years Later,” InfoQ, 2012,  <a href="https://oreil.ly/Pg1pO"><em class="hyperlink">https://oreil.ly/Pg1pO</em></a>, and Coda Hale, “You Can’t Sacrifice Partition,” 2010, <a href="https://oreil.ly/nHBoN"><em class="hyperlink">https://oreil.ly/nHBoN</em></a>.</p></div></div></section></body></html>

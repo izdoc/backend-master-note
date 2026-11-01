@@ -1,0 +1,1382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html xmlns:epub="http://www.idpf.org/2007/ops" xmlns="http://www.w3.org/1999/xhtml"><head><title>Phát triển Microservice</title><link rel="stylesheet" type="text/css" href="epub.css"/></head><body data-type="book"><section data-type="chapter" epub:type="chapter" data-pdf-bookmark="Chapter 9. Developing Microservices"><div class="chapter" id="ch-developing-microservices">
+<h1><span class="label">Chương 9. </span>Phát triển Microservice</h1>
+
+
+<p>Hãy áp dụng một số kỹ thuật mà chúng ta đã bàn đến và triển khai một dự án mẫu gồm nhiều microservice. Phần hiện thực các microservice trong dự án mẫu này sẽ được đơn giản hóa đáng kể. Chúng ta sẽ chỉ trình bày lượng mã vừa đủ cho mục đích minh họa, nhưng các bước và cách tiếp cận mà chúng ta thảo luận có thể được áp dụng trực tiếp cho những dự án thực tế lớn hơn nhiều.</p>
+
+<p>Chúng ta sẽ bắt đầu bằng việc xác định các ứng viên phù hợp cho microservice dựa trên phân tích bounded context bằng Event Storming, tương tự quy trình được mô tả trong <a data-type="xref" href="ch04.html#ch-rightsizing-microservices">Chương 4</a>. Tiếp theo, chúng ta sẽ đi qua bảy bước của phương pháp thiết kế SEED(S) mà chúng ta đã thảo luận trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>, và kết thúc bằng việc viết mã cho cả hai microservice mẫu. Khi hiện thực các dịch vụ này, chúng ta sẽ áp dụng hướng dẫn về mô hình hóa dữ liệu từ
+<a data-type="xref" href="ch05.html#ch-dealing-with-data">Chương 5</a>. Cuối cùng nhưng cũng rất quan trọng, chúng ta sẽ chỉ ra cách thiết lập và cấu hình đúng một môi trường phát triển thân thiện cho microservice, áp dụng nhiều khuyến nghị từ <a data-type="xref" href="ch08.html#ch-developer-workspace">Chương 8</a>, bao gồm việc tạo một umbrella project—một cách để chạy nhiều microservice cùng nhau trong workspace của lập trình viên.</p>
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Designing Microservice Endpoints"><div class="sect1" id="idm46223571114568">
+<h1>Thiết kế Endpoint cho Microservice</h1>
+
+<p>Giả sử rằng một phiên <a data-type="indexterm" data-primary="endpoint design" id="idm46223571112616"/><a data-type="indexterm" data-primary="design" data-secondary="endpoints" id="idm46223571111912"/>Event Storming mà bạn thực hiện cho một sản phẩm phần mềm quản lý chuyến bay đã xác định được hai bounded context chính:</p>
+
+<ul>
+<li>
+<p>Quản lý chuyến bay</p>
+</li>
+<li>
+<p>Quản lý đặt chỗ</p>
+</li>
+</ul>
+
+<p>Như đã thảo luận trong <a data-type="xref" href="ch04.html#ch-rightsizing-microservices">Chương 4</a>, ở giai đoạn đầu, việc thiết kế microservice theo hướng coarse-grained thường mang lại hiệu quả. Cụ thể, chúng ta thường căn chỉnh chúng theo bounded context; tức là hai microservice đầu tiên của chúng ta có thể là ms-flights và ms-reservations!</p>
+
+<p>Bây giờ, khi đã xác định được các microservice mục tiêu <a data-type="indexterm" data-primary="endpoint design" data-secondary="SEED(S)" id="idm46223571106440"/><a data-type="indexterm" data-primary="design" data-secondary="endpoints" data-tertiary="SEED(S)" id="idm46223571105432"/><a data-type="indexterm" data-primary="SEED(S)" data-secondary="endpoint design" id="idm46223571104216"/>, chúng ta cần áp dụng quy trình thiết kế SEED(S) (được giới thiệu trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>) cho chúng. Theo bước đầu tiên của phương pháp SEED(S), chúng ta cần xác định các actor khác nhau. Với mục đích của mình, hãy giả định các actor sau:</p>
+
+<ul>
+<li>
+<p>Khách hàng đang cố đặt chuyến bay</p>
+</li>
+<li>
+<p>Ứng dụng dành cho khách hàng của hãng hàng không (web, mobile, v.v.)</p>
+</li>
+<li>
+<p>Các web API mà <a data-type="indexterm" data-primary="API (application programming interface)" data-secondary="BFF" id="idm46223571099000"/><a data-type="indexterm" data-primary="BFF APIs" id="idm46223571097976"/>ứng dụng tương tác cùng (Trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>, chúng ta đã nhắc rằng một số người gọi chúng là “backends for frontends”, hay BFF API.)</p>
+</li>
+<li>
+<p>Microservice quản lý chuyến bay: ms-flights</p>
+</li>
+<li>
+<p>Microservice quản lý đặt chỗ: ms-reservations</p>
+</li>
+</ul>
+
+<p>Hãy xem một số <a data-type="indexterm" data-primary="endpoint design" data-secondary="JTBDs" id="enddesjtbd"/><a data-type="indexterm" data-primary="design" data-secondary="endpoints" data-tertiary="JTBDs" id="desendjtbd"/><a data-type="indexterm" data-primary="JTBDs (jobs to be done)" data-secondary="endpoint design" id="jtbdenddes"/>JTBD (jobs to be done) mẫu mà nhóm sản phẩm của chúng ta có thể đã thu thập được từ phỏng vấn khách hàng và nghiên cứu phân tích nghiệp vụ.</p>
+<ol>
+<li>
+<p><em>Khi</em> khách hàng tương tác với UI, <em>ứng dụng cần</em> hiển thị sơ đồ ghế cho biết ghế nào đã có người và ghế nào còn trống, <em>để khách hàng có thể</em> chọn ghế.</p>
+</li>
+<li>
+<p><em>Khi</em> khách hàng đang hoàn tất việc đặt chỗ, <em>ứng dụng web cần</em> giữ chỗ một ghế cho khách hàng, <em>để ứng dụng có thể</em> tránh xung đột đặt chỗ ghế ngoài ý muốn.</p>
+</li>
+
+</ol>
+
+<p>Hãy nhớ lại từ <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a> rằng chúng ta khuyến nghị BFF API chỉ nên là một lớp mỏng, không hiện thực business logic. Chúng chủ yếu chỉ điều phối các microservice. Vì vậy thường sẽ có những công việc mà BFF API cần đến các microservice. Danh sách công việc sau đây, tức các JTBD mang tính kỹ thuật hơn, mô tả các nhu cầu giữa BFF API và microservice:</p>
+<ol>
+<li>
+<p><em>Khi</em> API được yêu cầu cung cấp sơ đồ ghế, <em>API cần</em> ms-flights cung cấp cấu hình chỗ ngồi của chuyến bay, <em>để API có thể</em> lấy thông tin còn trống và dựng kết quả cuối cùng.</p>
+</li>
+<li>
+<p><em>Khi</em> API cần hiển thị sơ đồ ghế, <em>API cần</em> ms-reservations cung cấp danh sách các ghế đã được đặt <em>để API có thể</em> bổ sung dữ liệu đó vào cấu hình chỗ ngồi và trả về sơ đồ ghế.</p>
+</li>
+<li>
+<p><em>Khi</em> API được yêu cầu đặt một ghế, <em>API cần</em> ms-reservations thực hiện việc đặt chỗ, <em>để API có thể</em> đặt được ghế đó.</p>
+</li>
+
+</ol>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223571076168">
+<h5>Quyết định then chốt: Tránh để các Microservice gọi trực tiếp lẫn nhau</h5>
+<p>Lưu ý rằng chúng ta không để ms-flights gọi ms-reservations để lắp ghép sơ đồ ghế, mà thay vào đó để BFF API xử lý phần tương tác này. Điều này quay lại với khuyến nghị trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a> rằng nên tránh các lời gọi trực tiếp từ microservice sang microservice.</p>
+</div></aside>
+
+<p>Theo phương pháp SEED(S), tiếp theo chúng ta mô tả các tương tác do các công việc khác nhau biểu diễn, bằng các <a data-type="indexterm" data-primary="UML" data-secondary="sequence diagrams" data-tertiary="PlantUML format" id="idm46223571073000"/><a data-type="indexterm" data-primary="PlantUML" data-secondary="UML sequence diagrams" id="idm46223571071752"/>sơ đồ tuần tự UML ở định dạng PlantUML:</p>
+
+<pre data-type="programlisting">@startuml
+
+actor Customer as cust
+participant "Web App" as app
+participant "BFF API" as api
+participant "ms-flights" as msf
+participant "ms-reservations" as msr
+
+cust -[#blue]-&gt; app ++: "Flight Seats Page"
+app -[#blue]-&gt; api ++ : flight.getSeatingSituation()
+api -[#blue]-&gt; api: auth
+api -&gt; msf ++ : getFlightId()
+msf --&gt; api: flight_id
+api -&gt; msf: getFlightSeating()
+return []flightSeating
+api -&gt; msr ++ : getReservedSeats()
+return []reservedSeats
+return []SeatingSituation
+return "Seats Selection Page"
+|||
+cust -[#blue]-&gt;app ++: "Choose a seat &amp; checkout"
+app-[#blue]-&gt;app: "checkout workflow"
+app-[#blue]-&gt;api ++: "book the seat"
+api -[#blue]-&gt;api: auth
+api-&gt;msr ++: "reserveSeat()"
+return "success"
+return "success"
+return "Success Page"
+@enduml</pre>
+
+<p>Phần này có thể được render (ví dụ bằng <a href="http://liveuml.com">LiveUML</a>) thành sơ đồ UML được minh họa trong <a data-type="xref" href="#jtbd_sequence_diagram">Hình 9-1</a>.</p>
+
+<p>Như bạn có thể thấy rõ từ sơ đồ này, JTBD đầu tiên là hiển thị cho khách hàng một trang “ghế trên chuyến bay”. Để hoàn thành công việc này, một ứng dụng (hoặc website) sẽ cần gọi một frontend (BFF) API trả về “tình trạng” chỗ ngồi: một danh sách ghế kèm chỉ báo ghế nào đã có người và ghế nào còn trống. API trước tiên sẽ xác thực lời gọi để bảo đảm ứng dụng được phép
+đặt những câu hỏi như vậy. Nếu <code>auth</code> thành công, trước hết nó sẽ cố lấy <code>flight_id</code> từ microservice ms-flights. Điều này là cần thiết vì khách hàng thường
+chỉ nhập số hiệu chuyến bay không duy nhất (định danh một tuyến nhiều hơn là một chuyến bay cụ thể vào một ngày cụ thể) cùng ngày bay. Sau khi nhận được <code>flight_id</code> duy nhất, API sẽ lấy danh sách ghế từ ms-flights. Để có thể hiển thị các ghế đã có người, nó sẽ truy vấn riêng ms-reservations để lấy các đặt chỗ hiện có trên chuyến bay.</p>
+
+<figure><div id="jtbd_sequence_diagram" class="figure">
+<img src="assets/msur_0901.png" alt="msur 0901"/>
+<h6><span class="label">Hình 9-1. </span>Sơ đồ tuần tự biểu diễn các tương tác của nhiều JTBD khác nhau</h6>
+</div></figure>
+
+<p>Điều đặc biệt quan trọng ở đây là cách chúng ta đang thực hành nguyên tắc đã mô tả trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a> rằng các microservice không nên gọi trực tiếp lẫn nhau mà thay vào đó được điều phối bởi một lớp API mỏng. Đó chính là lý do ms-flights không trực tiếp truy vấn danh sách ghế đã đặt từ ms-reservations. Khi API thu thập đủ mọi thông tin cần thiết, nó có thể trả về tập dữ liệu phong phú cho ứng dụng/website để phía đó dựng ra màn hình mong muốn cho khách hàng.</p>
+
+<p>Ở phần thứ hai của <a data-type="xref" href="#jtbd_sequence_diagram">Hình 9-1</a>, chúng ta mô tả JTBD thứ hai của khách hàng: sau khi nhìn thấy tình trạng chỗ ngồi hiện tại, họ muốn chọn một ghế cụ thể (còn trống) và đặt ghế đó. Để hoàn thành tác vụ này, API lại cần <code>auth</code> rồi gọi một microservice là ms-reservations, sau đó trả trạng thái thành công hay thất bại cho ứng dụng dựa trên kết quả của lần thử đặt chỗ. Điều này cho phép ứng dụng thông báo cho khách hàng biết yêu cầu của họ có được thực hiện hay không.</p>
+
+<p>Khi đã có các JTBD và hiểu rõ các tương tác, chúng ta có thể chuyển chúng thành query và action. Chúng ta sẽ làm điều này cho cả ms-flights lẫn ms-reservations. Trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>, chúng ta đã giải thích rằng bạn cũng nên thiết kế action và query cho BFF API, không chỉ cho microservice, nhưng ở đây chúng ta sẽ để phần việc đó như một <a data-type="indexterm" data-primary="endpoint design" data-secondary="JTBDs" data-startref="enddesjtbd" id="idm46223571057160"/><a data-type="indexterm" data-primary="design" data-secondary="endpoints" data-tertiary="JTBDs" data-startref="desendjtbd" id="idm46223571055944"/><a data-type="indexterm" data-primary="JTBDs (jobs to be done)" data-secondary="endpoint design" data-startref="jtbdenddes" id="idm46223571054456"/>bài tập cho người đọc.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Flights Microservice"><div class="sect2" id="idm46223571052984">
+<h2>Microservice Flights</h2>
+
+<p>Để tổng hợp các action và query cho ms-flights:</p>
+<dl>
+<dt>Lấy thông tin chi tiết chuyến bay</dt>
+<dd>
+
+<ul>
+<li>
+<p><em>Đầu vào</em>: <code>flight_no</code>, <code>departure_local_date_time</code> (định dạng ISO8601 và theo múi giờ địa phương)</p>
+</li>
+<li>
+<p><em>Phản hồi</em>: Một <code>flight_id</code> duy nhất định danh một chuyến bay cụ thể vào một ngày cụ thể. Trên thực tế, endpoint này rất có thể còn trả về các trường khác liên quan đến chuyến bay, nhưng chúng không liên quan đến ngữ cảnh của chúng ta nên được lược bỏ.</p>
+</li>
+</ul>
+</dd>
+<dt>Lấy sơ đồ chỗ ngồi của chuyến bay (sơ đồ ghế trên một chuyến bay)</dt>
+<dd>
+
+<ul>
+<li>
+<p><em>Đầu vào</em>: <code>flight_id</code></p>
+</li>
+<li>
+<p><em>Phản hồi</em>: Đối tượng Seat Map ở định dạng JSON<sup><a data-type="noteref" id="idm46223571041976-marker" href="ch09.html#idm46223571041976">1</a></sup></p>
+</li>
+</ul>
+</dd>
+</dl>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Reservations Microservice"><div class="sect2" id="idm46223571039672">
+<h2>Microservice Reservations</h2>
+
+<p>Để tổng hợp các action và query cho ms-reservations:</p>
+<dl>
+<dt>Truy vấn các ghế đã được đặt trên một chuyến bay</dt>
+<dd>
+
+<ul>
+<li>
+<p><em>Đầu vào</em>: <code>flight_id</code></p>
+</li>
+<li>
+<p><em>Phản hồi</em>: Danh sách các số ghế đã có người, mỗi số ghế ở định dạng như “2A”</p>
+</li>
+</ul>
+</dd>
+<dt>Đặt một ghế trên chuyến bay</dt>
+<dd>
+
+<ul>
+<li>
+<p><em>Đầu vào</em>: <code>flight_id</code>, <code>customer_id</code>, <code>seat_num</code></p>
+</li>
+<li>
+<p><em>Kết quả mong đợi</em>: Một ghế được đặt và không còn khả dụng cho người khác, hoặc phát sinh lỗi nếu ghế đó không còn trống</p>
+</li>
+<li>
+<p><em>Phản hồi</em>: Thành công (<code>200 Success</code>) hoặc thất bại (<code>403 Forbidden</code>)</p>
+</li>
+</ul>
+</dd>
+</dl>
+
+<p>Như đã thảo luận trong <a data-type="xref" href="ch03.html#ch-designing-microservices">Chương 3</a>, giá trị của việc viết ra các action và query là chúng đưa chúng ta đến gần hơn rất nhiều với việc tạo đặc tả kỹ thuật cho dịch vụ so với khi công việc được trình bày ở dạng thiên về nghiệp vụ, tức jobs (JTBD).</p>
+
+<p>Giờ đây khi đã có các action và query cho microservice của mình, chúng ta có thể tiếp tục mô tả các microservice định xây dựng theo một định dạng chuẩn. Trong trường hợp này, chúng ta sẽ xây dựng các microservice RESTful và mô tả chúng bằng OAS. Ở phần tiếp theo, chúng ta sẽ xem đặc tả cho hai microservice này có thể trông như thế nào.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Designing an OpenAPI Specification"><div class="sect2" id="idm46223571024184">
+<h2>Thiết kế một Đặc tả OpenAPI</h2>
+
+<p>Dựa trên đặc tả query và command <a data-type="indexterm" data-primary="design" data-secondary="OpenAPI spec" id="desopenapi"/><a data-type="indexterm" data-primary="OAS (OpenAPI Specification)" data-secondary="design" id="desopenapi2"/>mà chúng ta vừa thiết kế, việc chuyển thành OpenAPI Specification (OAS) trở nên khá thẳng thắn. Phần đầu của đặc tả thường là một số thông tin meta:</p>
+
+<pre data-type="programlisting" data-code-language="yaml">  <code class="nt">openapi</code><code class="p">:</code> <code class="l-Scalar-Plain">3.0.0</code>
+  <code class="nt">info</code><code class="p">:</code>
+    <code class="nt">title</code><code class="p">:</code> <code class="l-Scalar-Plain">Flights Management Microservice API</code>
+    <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+      <code class="no">API Spec for Flight Management System</code>
+    <code class="nt">version</code><code class="p">:</code> <code class="l-Scalar-Plain">1.0.1</code>
+  <code class="nt">servers</code><code class="p">:</code>
+    <code class="p-Indicator">-</code> <code class="nt">url</code><code class="p">:</code> <code class="l-Scalar-Plain">http://api.example.com/v1</code>
+      <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Production Server</code></pre>
+
+<p>Với endpoint <code>/flights</code>, bạn sẽ muốn cung cấp các tham số đầu vào <code>flight_no</code> và <code>departure_date_time</code> trong query string của request. Schema cũng nên mô tả cấu trúc JSON của response, bao gồm <code>flight_id</code>, mã định danh sân bay đi, mã sân bay đến và mã HTTP (200) cho phản hồi thành công. Phần này ở định dạng OpenAPI có thể trông như sau:</p>
+
+<pre data-type="programlisting" data-code-language="yaml">  <code class="nt">paths</code><code class="p">:</code>
+    <code class="nt">/flights</code><code class="p">:</code>
+      <code class="nt">get</code><code class="p">:</code>
+        <code class="nt">summary</code><code class="p">:</code> <code class="l-Scalar-Plain">Look Up Flight Details with Flight No and Departure Date</code>
+        <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+          <code class="no">Look up flight details, such as: the unique flight_id used by the</code>
+          <code class="no">rest of the Flights management endpoints, flight departure and</code>
+          <code class="no">arrival airports.</code>
+
+          <code class="no">Example request:</code>
+          <code class="no">```</code>
+            <code class="no">GET http://api.example.com/v1/flights?</code>
+                <code class="no">flight_no=AA2532&amp;departure_date_time=2020-05-17T13:20</code>
+          <code class="no">```</code>
+        <code class="nt">parameters</code><code class="p">:</code>
+          <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">flight_no</code>
+            <code class="nt">in</code><code class="p">:</code> <code class="l-Scalar-Plain">query</code>
+            <code class="nt">required</code><code class="p">:</code> <code class="l-Scalar-Plain">true</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Flight Number.</code>
+            <code class="nt">schema</code><code class="p">:</code>
+              <code class="nt">type </code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+            <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">AA2532</code>
+          <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">departure_date_time</code>
+            <code class="nt">in</code><code class="p">:</code> <code class="l-Scalar-Plain">query</code>
+            <code class="nt">required</code><code class="p">:</code> <code class="l-Scalar-Plain">true</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Date and time (in ISO8601)</code>
+            <code class="nt">schema</code><code class="p">:</code>
+              <code class="nt">type </code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+            <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">2020-05-17T13:20</code>
+
+
+        <code class="nt">responses</code><code class="p">:</code>
+          <code class="s">'200'</code><code class="p-Indicator">:</code>    <code class="c1"># success response</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Successful Response</code>
+            <code class="nt">content</code><code class="p">:</code>
+              <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                  <code class="nt">items</code><code class="p">:</code>
+                    <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                    <code class="nt">properties</code><code class="p">:</code>
+                      <code class="nt">flight_id</code><code class="p">:</code>
+                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                        <code class="nt">example</code><code class="p">:</code> <code class="s">"edcc03a4-7f4e-40d1-898d-bf84a266f1b9"</code>
+                      <code class="nt">origin_code</code><code class="p">:</code>
+                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                        <code class="nt">example</code><code class="p">:</code> <code class="s">"LAX"</code>
+                      <code class="nt">destination_code</code><code class="p">:</code>
+                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                        <code class="nt">example</code><code class="p">:</code> <code class="s">"DCA"</code>
+
+                  <code class="nt">example</code><code class="p">:</code>
+                    <code class="nt">flight_id</code><code class="p">:</code> <code class="s">"edcc03a4-7f4e-40d1-898d-bf84a266f1b9"</code>
+                    <code class="nt">origin_code</code><code class="p">:</code> <code class="s">"LAX"</code></pre>
+
+<p>Khi bạn thiết kế đặc tả cho endpoint <code>/flights/{flight_no}/seat_map</code>, endpoint này có thể nhận tham số đầu vào <code>flight_no</code> ngay trong URL path thay vì trong phần query của URL. Trong đối tượng response, với mục đích minh họa, chúng ta sử dụng một cấu trúc đối tượng SeatMap mô phỏng theo chuẩn vàng của ngành là <a href="https://oreil.ly/ySRA0">Seat Map API của Sabre</a>. Nếu thực sự xây dựng một API thương mại, bạn sẽ cần tự thiết kế cách hiện thực của mình hoặc xin phép tái sử dụng từ tác giả gốc của thiết kế đó:</p>
+
+<pre data-type="programlisting" data-code-language="yaml">    <code class="l-Scalar-Plain">/flights/{flight_no}/seat_map</code><code class="p-Indicator">:</code>
+      <code class="nt">get</code><code class="p">:</code>
+        <code class="nt">summary</code><code class="p">:</code> <code class="l-Scalar-Plain">Get a seat map for a flight</code>
+        <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+          <code class="no">Example request:</code>
+          <code class="no">```</code>
+            <code class="no">GET http://api.example.com/</code>
+                <code class="no">v1/flights/AA2532/datetime/2020-05-17T13:20/seats/12C</code>
+          <code class="no">```</code>
+        <code class="nt">parameters</code><code class="p">:</code>
+          <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">flight_no</code>
+            <code class="nt">in</code><code class="p">:</code> <code class="l-Scalar-Plain">path</code>
+            <code class="nt">required</code><code class="p">:</code> <code class="l-Scalar-Plain">true</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Unique Flight Identifier</code>
+            <code class="nt">schema</code><code class="p">:</code>
+              <code class="nt">type </code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+            <code class="nt">example</code><code class="p">:</code> <code class="s">"edcc03a4-7f4e-40d1-898d-bf84a266f1b9"</code>
+
+        <code class="nt">responses</code><code class="p">:</code>
+          <code class="s">'200'</code><code class="p-Indicator">:</code>    <code class="c1"># success response</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Successful Response</code>
+            <code class="nt">content</code><code class="p">:</code>
+              <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                  <code class="nt">properties</code><code class="p">:</code>
+                    <code class="nt">Cabin</code><code class="p">:</code>
+                      <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                      <code class="nt">items</code><code class="p">:</code>
+                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                        <code class="nt">properties</code><code class="p">:</code>
+                          <code class="nt">firstRow</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">number</code>
+                            <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">8</code>
+                          <code class="nt">lastRow</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">number</code>
+                            <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">23</code>
+                          <code class="nt">Wing</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                            <code class="nt">properties</code><code class="p">:</code>
+                              <code class="nt">firstRow</code><code class="p">:</code>
+                                <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">number</code>
+                                <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">14</code>
+                              <code class="nt">lastRow</code><code class="p">:</code>
+                                <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">number</code>
+                                <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">22</code>
+                          <code class="nt">CabinClass</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                            <code class="nt">properties</code><code class="p">:</code>
+                              <code class="nt">CabinType</code><code class="p">:</code>
+                                <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                                <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">Economy</code>
+                          <code class="nt">Column</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                            <code class="nt">items</code><code class="p">:</code>
+                              <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                              <code class="nt">properties</code><code class="p">:</code>
+                                <code class="nt">Column</code><code class="p">:</code>
+                                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                                  <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">A</code>
+                                <code class="nt">Characteristics</code><code class="p">:</code>
+                                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                                  <code class="nt">example</code><code class="p">:</code>
+                                    <code class="p-Indicator">-</code> <code class="l-Scalar-Plain">Window</code>
+                                  <code class="nt">items</code><code class="p">:</code>
+                                    <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                          <code class="nt">Row</code><code class="p">:</code>
+                            <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                            <code class="nt">items</code><code class="p">:</code>
+                              <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                              <code class="nt">properties</code><code class="p">:</code>
+                                <code class="nt">RowNumber</code><code class="p">:</code>
+                                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">number</code>
+                                  <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">8</code>
+                                <code class="nt">Seat</code><code class="p">:</code>
+                                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                                  <code class="nt">items</code><code class="p">:</code>
+                                    <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                                    <code class="nt">properties</code><code class="p">:</code>
+                                      <code class="nt">premiumInd</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">boolean</code>
+                                        <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">false</code>
+                                      <code class="nt">exitRowInd</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">boolean</code>
+                                        <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">false</code>
+                                      <code class="nt">restrictedReclineInd</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">boolean</code>
+                                        <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">false</code>
+                                      <code class="nt">noInfantInd</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">boolean</code>
+                                        <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">false</code>
+                                      <code class="nt">Number</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                                        <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">A</code>
+                                      <code class="nt">Facilities</code><code class="p">:</code>
+                                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                                        <code class="nt">items</code><code class="p">:</code>
+                                          <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                                          <code class="nt">properties</code><code class="p">:</code>
+                                            <code class="nt">Detail</code><code class="p">:</code>
+                                              <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                                              <code class="nt">properties</code><code class="p">:</code>
+                                                <code class="nt">content</code><code class="p">:</code>
+                                                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                                                  <code class="nt">example</code><code class="p">:</code> <code class="l-Scalar-Plain">LegSpaceSeat</code></pre>
+
+<p>Bạn có thể xem toàn bộ mã nguồn của đặc tả tại <a href="https://oreil.ly/Microservices_UpandRunning_api_yml">trang GitHub của cuốn sách này</a>.</p>
+
+<p>OAS có thể được render bằng nhiều trình biên tập khác nhau; chẳng hạn như <a href="https://editor.swagger.io">Swagger Editor</a>. Việc render đặc tả ở trên sẽ tạo ra kết quả giống như <a data-type="xref" href="#ms-flights-oas-rendered">Hình 9-2</a>.</p>
+
+<figure><div id="ms-flights-oas-rendered" class="figure">
+<img src="assets/msur_0902.png" alt="msur 0902"/>
+<h6><span class="label">Hình 9-2. </span>OAS của ms-flights được render bằng Swagger Editor</h6>
+</div></figure>
+
+<p>Tương tự OAS của microservice flights, thiết kế cho các endpoint của hệ thống đặt chỗ có thể sẽ đại khái như sau:</p>
+
+<pre data-type="programlisting" data-code-language="yaml">  <code class="nt">openapi</code><code class="p">:</code> <code class="l-Scalar-Plain">3.0.0</code>
+  <code class="nt">info</code><code class="p">:</code>
+    <code class="nt">title</code><code class="p">:</code> <code class="l-Scalar-Plain">Seat Reservation System API</code>
+    <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+      <code class="no">API Spec for Fight Management System</code>
+    <code class="nt">version</code><code class="p">:</code> <code class="l-Scalar-Plain">1.0.1</code>
+  <code class="nt">servers</code><code class="p">:</code>
+    <code class="p-Indicator">-</code> <code class="nt">url</code><code class="p">:</code> <code class="l-Scalar-Plain">http://api.example.com/v1</code>
+      <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Production Server</code>
+  <code class="nt">paths</code><code class="p">:</code>
+    <code class="nt">/reservations</code><code class="p">:</code>
+      <code class="nt">get</code><code class="p">:</code>
+        <code class="nt">summary</code><code class="p">:</code> <code class="l-Scalar-Plain">Get Reservations for a flight</code>
+        <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+          <code class="no">Get all reservations for a specific flight</code>
+        <code class="nt">parameters</code><code class="p">:</code>
+          <code class="p-Indicator">-</code> <code class="nt">name</code><code class="p">:</code> <code class="l-Scalar-Plain">flight_id</code>
+            <code class="nt">in</code><code class="p">:</code> <code class="l-Scalar-Plain">query</code>
+            <code class="nt">required</code><code class="p">:</code> <code class="l-Scalar-Plain">true</code>
+            <code class="nt">schema</code><code class="p">:</code>
+              <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+        <code class="nt">responses</code><code class="p">:</code>
+          <code class="s">'200'</code><code class="p-Indicator">:</code>    <code class="c1"># success response</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Successful Response</code>
+            <code class="nt">content</code><code class="p">:</code>
+              <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">array</code>
+                  <code class="nt">items</code><code class="p">:</code>
+                    <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                    <code class="nt">properties</code><code class="p">:</code>
+                      <code class="nt">seat_no</code><code class="p">:</code>
+                        <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                        <code class="nt">example</code><code class="p">:</code> <code class="s">"18F"</code>
+                  <code class="nt">example</code><code class="p">:</code>
+                    <code class="p-Indicator">-</code> <code class="p-Indicator">{</code><code class="nt"> seat_no</code><code class="p">:</code> <code class="s">"18F"</code> <code class="p-Indicator">}</code>
+                    <code class="p-Indicator">-</code> <code class="p-Indicator">{</code><code class="nt"> seat_no</code><code class="p">:</code> <code class="s">"18D"</code> <code class="p-Indicator">}</code>
+                    <code class="p-Indicator">-</code> <code class="p-Indicator">{</code><code class="nt"> seat_no</code><code class="p">:</code> <code class="s">"15A"</code> <code class="p-Indicator">}</code>
+                    <code class="p-Indicator">-</code> <code class="p-Indicator">{</code><code class="nt"> seat_no</code><code class="p">:</code> <code class="s">"15B"</code> <code class="p-Indicator">}</code>
+                    <code class="p-Indicator">-</code> <code class="p-Indicator">{</code><code class="nt"> seat_no</code><code class="p">:</code> <code class="s">"7A"</code> <code class="p-Indicator">}</code>
+      <code class="nt">put</code><code class="p">:</code>
+        <code class="nt">summary</code><code class="p">:</code> <code class="l-Scalar-Plain">Reserve or cancel a seat</code>
+        <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+          <code class="no">Reserves a seat or removes a seat reservation</code>
+        <code class="nt">requestBody</code><code class="p">:</code>
+          <code class="nt">required</code><code class="p">:</code> <code class="l-Scalar-Plain">true</code>
+          <code class="nt">content</code><code class="p">:</code>
+            <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                  <code class="nt">properties</code><code class="p">:</code>
+                    <code class="nt">flight_id</code><code class="p">:</code>
+                      <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Flight's Unique Identifier.</code>
+                      <code class="nt">type </code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                      <code class="nt">example</code><code class="p">:</code> <code class="s">"edcc03a4-7f4e-40d1-898d-bf84a266f1b9"</code>
+                    <code class="nt">customer_id</code><code class="p">:</code>
+                      <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">Registered Customer's Unique Identifier</code>
+                      <code class="nt">type </code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                      <code class="nt">example</code><code class="p">:</code> <code class="s">"2e850e2f-f81d-44fd-bef8-3bb5e90791ff"</code>
+                    <code class="nt">seat_num</code><code class="p">:</code>
+                      <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">seat number</code>
+                      <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                <code class="nt">example</code><code class="p">:</code>
+                  <code class="nt">flight_id</code><code class="p">:</code> <code class="s">"edcc03a4-7f4e-40d1-898d-bf84a266f1b9"</code>
+                  <code class="nt">customer_id</code><code class="p">:</code> <code class="s">"2e850e2f-f81d-44fd-bef8-3bb5e90791ff"</code>
+                  <code class="nt">seat_num</code><code class="p">:</code> <code class="s">"8D"</code>
+        <code class="nt">responses</code><code class="p">:</code>
+          <code class="s">'200'</code><code class="p-Indicator">:</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="p-Indicator">|</code>
+              <code class="no">Success.</code>
+            <code class="nt">content</code><code class="p">:</code>
+              <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                  <code class="nt">properties</code><code class="p">:</code>
+                    <code class="nt">status</code><code class="p">:</code>
+                      <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                      <code class="nt">enum</code><code class="p">:</code> <code class="p-Indicator">[</code><code class="s">"success"</code><code class="p-Indicator">,</code> <code class="s">"error"</code><code class="p-Indicator">]</code>
+                      <code class="nt">example</code><code class="p">:</code>
+                        <code class="s">"success"</code>
+          <code class="s">'403'</code><code class="p-Indicator">:</code>
+            <code class="nt">description</code><code class="p">:</code> <code class="l-Scalar-Plain">seat(s) unavailable. Booking failed.</code>
+            <code class="nt">content</code><code class="p">:</code>
+              <code class="nt">application/json</code><code class="p">:</code>
+                <code class="nt">schema</code><code class="p">:</code>
+                  <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">object</code>
+                  <code class="nt">properties</code><code class="p">:</code>
+                    <code class="nt">error</code><code class="p">:</code>
+                      <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                    <code class="nt">description</code><code class="p">:</code>
+                      <code class="nt">type</code><code class="p">:</code> <code class="l-Scalar-Plain">string</code>
+                  <code class="nt">example</code><code class="p">:</code>
+                    <code class="nt">error</code><code class="p">:</code> <code class="s">"Could</code><code class="nv"> </code><code class="s">not</code><code class="nv"> </code><code class="s">complete</code><code class="nv"> </code><code class="s">reservation"</code>
+                    <code class="nt">description</code><code class="p">:</code> <code class="s">"Seat</code><code class="nv"> </code><code class="s">already</code><code class="nv"> </code><code class="s">reserved.</code><code class="nv"> </code><code class="s">Cannot</code><code class="nv"> </code><code class="s">double-book"</code></pre>
+
+<p>Giờ đây khi đã có thiết kế dịch vụ và các OAS tương ứng, đã đến lúc chuyển sang bước cuối cùng trong quy trình SEED(S): viết mã cho các microservice.</p>
+
+<p>Khi hiện thực các microservice flights và reservations, chúng ta sẽ thực hành những nguyên tắc đã được bàn tới trước đó trong cuốn sách này. Cụ thể, chúng ta sẽ dùng các tech stack khác nhau cho các dịch vụ này để minh họa khả năng hỗ trợ hiện thực không đồng nhất. Microservice reservations sẽ được xây dựng bằng Python và Flask, còn <a data-type="indexterm" data-primary="design" data-secondary="OpenAPI spec" data-startref="desopenapi" id="idm46223570351560"/><a data-type="indexterm" data-primary="OAS (OpenAPI Specification)" data-secondary="design" data-startref="desopenapi2" id="idm46223570350552"/>microservice flights sẽ được xây dựng bằng Node/Express.js.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Implementing the Data for a Microservice"><div class="sect1" id="idm46223571113784">
+<h1>Hiện thực Dữ liệu cho một Microservice</h1>
+
+<p>Để nhấn mạnh nhu cầu về <a data-type="indexterm" data-primary="data implementation" id="idm46223570348376"/>tính độc lập dữ liệu mà chúng ta đã bàn kỹ trong
+<a data-type="xref" href="ch05.html#ch-dealing-with-data">Chương 5</a>, chúng ta không chỉ bảo đảm rằng hai microservice không
+dùng chung bất kỳ không gian dữ liệu nào, mà còn chủ đích hiện thực chúng bằng
+những hệ thống dữ liệu backend hoàn toàn khác nhau: Redis cho reservations và MySQL cho
+flights. Chúng ta cũng sẽ giải thích vì sao mỗi microservice này lại hưởng lợi từ lựa chọn cơ chế lưu trữ dữ liệu tương ứng. Hãy bắt đầu với phần dữ liệu của microservice hệ thống reservations.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Redis for the Reservations Data Model"><div class="sect2" id="idm46223570103592">
+<h2>Redis cho Mô hình Dữ liệu của Reservations</h2>
+
+<p>Trong hệ thống reservations, chúng ta <a data-type="indexterm" data-primary="data implementation" data-secondary="Redis" id="dataRed"/><a data-type="indexterm" data-primary="Redis" id="redis"/>cần có khả năng lưu được tập các ghế đã đặt cho một chuyến bay và đặt một ghế nếu ghế đó chưa bị book. Redis có một cấu trúc dữ liệu đơn giản nhưng cực kỳ phù hợp với use case này: <em>hashes</em>.</p>
+
+<p>Redis hash được tối ưu cho việc lưu ánh xạ gồm các cặp key/value, trong đó cả key lẫn value đều là chuỗi. Chúng thường được dùng để lưu các đối tượng phẳng như một user với tên, họ, email, v.v. Với chúng ta, nó có thể đóng vai trò là nơi lưu trữ vững chắc cho thông tin đặt chỗ ghế. Chúng ta có thể lưu một đối tượng hash cho mỗi <code>flight_id</code> (một chuyến bay cụ thể), trong đó key của hash là các số ghế trên chuyến bay và value là <code>customer_id</code> của khách hàng đã đặt ghế đó. Redis có các lệnh để đặt giá trị mới trong hash và để lấy toàn bộ các giá trị đã được đặt (khi chúng ta cần biết mọi ghế đã được đặt), và rất tiện lợi là có cả một lệnh cho phép đặt giá trị chỉ khi key tương ứng (ghế) chưa có giá trị. Điều này hoàn hảo với chúng ta, vì thông thường ta không muốn cho phép double-booking một ghế trên chuyến bay.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223570097016">
+<h5>Quyết định then chốt: Dùng Redis để hiện thực Cơ sở dữ liệu Reservations</h5>
+<p>Dùng Redis làm data store cho reservations để tận dụng sự đơn giản và linh hoạt đặc trưng của nó, những đặc tính rất phù hợp với việc hiện thực microservice này.</p>
+</div></aside>
+
+<p>Hãy xem một ví dụ đặt vài ghế trên một chuyến bay được định danh duy nhất bằng <code>flight_id</code> là <code>40d1-898d-bf84a266f1b9</code>. Nếu bạn đã có bản cài Redis hoạt động bình thường, hoặc dùng <a href="https://oreil.ly/ZmFAQ">Redis CLI</a> từ workspace của microservice reservations bằng cách chạy <code>make redis</code> sau khi checkout repository GitHub đó, bạn sẽ có thể chạy các lệnh sau:</p>
+
+<pre data-type="programlisting">&gt; HSETNX flight:40d1-898d-bf84a266f1b9 12B b4cdf96e-a24a-a09a-87fb1c47567c
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 12C e0392920-a24a-b6e3-8b4ebcbe7d5c
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 11A f4892d9e-a24a-8ed1-2397df0ddba7
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 3A 017d40c6-a24b-b6d7-4bb15d04a10b
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 3B 0c27f7c8-a24b-9556-fb37c840de89
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 22A 0c27f7c8-a24b-9556-fb37c840de89
+(integer) 1
+&gt; HSETNX flight:40d1-898d-bf84a266f1b9 22B 24ae6f02-a24b-a149-53d7a72f10c0
+(integer) 1</pre>
+
+<p>Lệnh <code>HSETNX</code> mà chúng ta dùng ở đây sẽ gán giá trị cho key <code>HSET</code> được chỉ định thành giá trị mong muốn chỉ khi key đó chưa có giá trị. Nhờ vậy, chúng ta tránh được việc đặt các ghế đã được gán.</p>
+
+<p>Hãy xem cách chúng ta lấy tất cả các ghế đã có người trên một chuyến bay cụ thể:</p>
+
+<pre data-type="programlisting">&gt; HKEYS flight:40d1-898d-bf84a266f1b9
+1) "12B"
+2) "12C"
+3) "11A"
+4) "3A"
+5) "3B"
+6) "22A"
+7) "22B"</pre>
+
+<p>Nếu muốn lấy cả key lẫn value, chúng ta cũng có thể làm như sau:</p>
+
+<pre data-type="programlisting">&gt; HGETALL flight:40d1-898d-bf84a266f1b9
+ 1) "12B"
+ 2) "b4cdf96e-a24a-a09a-87fb1c47567c"
+ 3) "12C"
+ 4) "e0392920-a24a-b6e3-8b4ebcbe7d5c"
+ 5) "11A"
+ 6) "f4892d9e-a24a-8ed1-2397df0ddba7"
+ 7) "3A"
+ 8) "017d40c6-a24b-b6d7-4bb15d04a10b"
+ 9) "3B"
+10) "0c27f7c8-a24b-9556-fb37c840de89"
+11) "22A"
+12) "0c27f7c8-a24b-9556-fb37c840de89"
+13) "22B"
+14) "24ae6f02-a24b-a149-53d7a72f10c0"</pre>
+
+<p>Bây giờ hãy xem điều gì xảy ra nếu ta cố double-book một ghế đã được đặt, chẳng hạn 12C:</p>
+
+<pre data-type="programlisting">&gt; HSETNX flight:40d1-898d-bf84a266f1b9 12C 083a6fc2-a24d-889b-6fc480858a38
+(integer) 0</pre>
+
+<p>Hãy để ý rằng phản hồi của lệnh này là <code>(integer) 0</code> thay vì <code>(integer) 1</code> như chúng ta nhận được ở các lệnh <code>HSETNX</code> trước đó. Điều này cho biết thực tế có 0 field được cập nhật, và lý do là ghế 12C đã được đặt rồi.</p>
+
+<p>Như bạn có thể thấy, việc chọn Redis làm data store cho ms-reservations đã
+khiến phần hiện thực trở nên dễ dàng và tự nhiên. Chúng ta có thể dùng những
+cấu trúc dữ liệu rất phù hợp, như <code>HSET</code>, để đáp ứng nhu cầu một cách gọn gàng và hiệu quả.
+Lệnh <code>HSETNX</code> cho phép chúng ta tránh double-booking ngoài ý muốn theo cách đáng tin cậy và trực tiếp.</p>
+
+<p>Redis là một key/value store tuyệt vời có thể dùng trong rất nhiều use case khác nhau, đó cũng là lý do nó có lượng người hâm mộ rất lớn trong giới lập trình viên. Tuy nhiên, nó sẽ không phải là cơ sở dữ liệu hoàn hảo cho mọi use case. Đôi khi chúng ta có những nhu cầu dữ liệu <a data-type="indexterm" data-primary="data implementation" data-secondary="Redis" data-startref="dataRed" id="idm46223570081752"/><a data-type="indexterm" data-primary="Redis" data-startref="redis" id="idm46223570080504"/>được đáp ứng tốt hơn bởi những cơ sở dữ liệu phổ biến khác.</p>
+
+<p>Để minh họa điều đó, trong phần tiếp theo, chúng ta sẽ hiện thực dữ liệu cho microservice ms-flights bằng một cơ sở dữ liệu SQL truyền thống.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="MySQL Data Model for the Flights Microservice"><div class="sect2" id="idm46223570103048">
+<h2>Mô hình Dữ liệu MySQL cho Microservice Flights</h2>
+
+<p>Mô hình dữ liệu đầu tiên mà chúng ta <a data-type="indexterm" data-primary="data implementation" data-secondary="MySQL data model" id="datamysql"/><a data-type="indexterm" data-primary="MySQL" id="mysql"/>cần ở đây nên chứa seat map. Như chúng ta đã thấy trong OAS của microservice flights, seat map <a data-type="indexterm" data-primary="JSON" data-secondary="seat map" id="idm46223570074696"/>là một đối tượng JSON
+phức tạp. MySQL có thể là nơi lưu trữ tốt hơn cho kiểu dữ liệu này so với Redis tiêu chuẩn. Kể từ
+MySQL 5.7.8, MySQL đã có hỗ trợ native mạnh mẽ cho kiểu dữ liệu JSON. Phần
+hỗ trợ này còn được mở rộng và cải thiện trong phiên bản MySQL 8.x mới nhất. Hiện nay nó
+còn hỗ trợ cập nhật tại chỗ, theo kiểu atomic cho giá trị JSON và cú pháp JSON Merge Patch. Trong khi đó, Redis chỉ hỗ trợ JSON <a data-type="indexterm" data-primary="JSON" data-secondary="RedisJSON module" id="idm46223570073240"/><a data-type="indexterm" data-primary="RedisJSON module" id="idm46223570072296"/>thông qua một module RedisJSON không được dựng sẵn trong bản phân phối Redis tiêu chuẩn.</p>
+
+<p>Một kiểu dữ liệu JSON <a data-type="indexterm" data-primary="MySQL" data-secondary="JSON data type" id="idm46223570070952"/><a data-type="indexterm" data-primary="JSON" data-secondary="MySQL and" id="idm46223570069976"/>được hiện thực tốt mang lại nhiều lợi thế rõ rệt so với việc lưu JSON trong một cột chuỗi: kiểm tra tính hợp lệ của tài liệu JSON khi insert, lưu trữ nhị phân được tối ưu bên trong, khả năng tra cứu trực tiếp các đối tượng con và giá trị lồng nhau bằng key, v.v.</p>
+
+<p>Ngoài ra, ở endpoint tra cứu, chúng ta cần truy vấn dữ liệu theo hai trường: <code>flight_no</code> và <code>datetime</code>. Cơ sở dữ liệu quan hệ là một cấu trúc tự nhiên hơn cho những truy vấn như vậy. Trong Redis, có lẽ chúng ta sẽ phải tạo một trường ghép để
+đạt được điều tương tự. Tóm lại, dù về mặt kỹ thuật chúng ta cũng có thể hiện thực dịch vụ này bằng Redis, vẫn có những lý do để chọn MySQL, trong đó có việc MySQL giúp chúng ta minh họa cách sử dụng những cơ sở dữ liệu khác nhau cho các dịch vụ khác nhau. Tình huống thực tế hiển nhiên sẽ phức tạp hơn nhiều, với nhiều khía cạnh hơn cần cân nhắc.</p>
+
+<p>Hãy xem bảng <code>seat_maps</code>:</p>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">CREATE</code> <code class="k">TABLE</code> <code class="o">`</code><code class="n">seat_maps</code><code class="o">`</code>  <code class="p">(</code>
+  <code class="o">`</code><code class="n">flight_no</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">seat_map</code><code class="o">`</code> <code class="n">json</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">origin_code</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">destination_code</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+
+  <code class="k">PRIMARY</code> <code class="k">KEY</code><code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">)</code>
+<code class="p">);</code></pre>
+
+<p>Một bảng khác mà chúng ta cần là ánh xạ giữa <code>flight_id</code> với <code>flight_no</code> và <code>datetime</code>. Script tạo bảng này có thể trông như sau:</p>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">CREATE</code> <code class="k">TABLE</code> <code class="o">`</code><code class="n">flights</code><code class="o">`</code>  <code class="p">(</code>
+  <code class="o">`</code><code class="n">flight_id</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">36</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">flight_no</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">flight_date</code><code class="o">`</code> <code class="n">datetime</code><code class="p">(</code><code class="mi">0</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+
+  <code class="k">PRIMARY</code> <code class="k">KEY</code> <code class="p">(</code><code class="o">`</code><code class="n">flight_id</code><code class="o">`</code><code class="p">),</code>
+  <code class="k">INDEX</code> <code class="o">`</code><code class="n">idx_flight_date</code><code class="o">`</code><code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">,</code> <code class="o">`</code><code class="n">flight_date</code><code class="o">`</code><code class="p">)</code>
+
+  <code class="k">FOREIGN</code> <code class="k">KEY</code><code class="p">(</code><code class="n">flight_no</code><code class="p">)</code>
+    <code class="k">REFERENCES</code> <code class="n">seat_maps</code><code class="p">(</code><code class="n">flight_no</code><code class="p">)</code>
+<code class="p">);</code></pre>
+
+<p>Hãy chèn seat map mẫu đầu tiên của chúng ta:</p>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">INSERT</code> <code class="k">INTO</code> <code class="o">`</code><code class="n">seat_maps</code><code class="o">`</code><code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">,</code> <code class="o">`</code><code class="n">seat_map</code><code class="o">`</code><code class="p">,</code> <code class="o">`</code><code class="n">origin_code</code><code class="o">`</code><code class="p">,</code> <code class="o">/</code>
+<code class="o">`</code><code class="n">destination_code</code><code class="o">`</code><code class="p">)</code> <code class="k">VALUES</code> <code class="p">(</code><code class="s1">'AA2532'</code><code class="p">,</code> <code class="s1">'{\"Cabin\": [{\"Row\": [{\"Seat\": /</code>
+<code class="s1">[{\"Number\": \"A\", \"Facilities\": [{\"Detail\": {\"content\": /</code>
+<code class="s1">\"LegSpaceSeat\"}}], \"exitRowInd\": false, \"premiumInd\": false, /</code>
+<code class="s1">\"noInfantInd\": false, \"restrictedReclineInd\": false}], \"RowNumber\": /</code>
+<code class="s1">8}], \"Wing\": {\"lastRow\": 22, \"firstRow\": 14}, \"Column\": /</code>
+<code class="s1">[{\"Column\": \"A\", \"Characteristics\": [\"Window\"]}], \"lastRow\": 23, /</code>
+<code class="s1">\"firstRow\": 8, \"CabinClass\": {\"CabinType\": \"Economy\"}}]}'</code><code class="p">,</code> <code class="o">/</code>
+<code class="s1">'LAX'</code><code class="p">,</code> <code class="s1">'DCA'</code><code class="p">);</code></pre>
+
+<p>Khi đã có giá trị JSON phù hợp trong cơ sở dữ liệu, chúng ta có thể dễ dàng chọn
+các giá trị cụ thể trong đó hoặc lọc theo những giá trị cụ thể. Ví dụ:</p>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">select</code> <code class="n">seat_map</code><code class="o">-&gt;&gt;</code><code class="ss">"$.Cabin[0].firstRow"</code> <code class="k">from</code> <code class="n">seat_maps</code></pre>
+
+<p>Giờ đây khi đã có mô hình dữ liệu hoạt động cho cả hai microservice, chúng ta có thể đi sâu hơn vào phần hiện thực <a data-type="indexterm" data-primary="data implementation" data-secondary="MySQL data model" data-startref="datamysql" id="idm46223569716984"/><a data-type="indexterm" data-primary="MySQL" data-startref="mysql" id="idm46223569623432"/>mã nguồn cho chúng.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Implementing Code for a Microservice"><div class="sect1" id="idm46223569622232">
+<h1>Hiện thực Mã nguồn cho một Microservice</h1>
+
+<p>Bây giờ chúng ta sẽ hướng tới <a data-type="indexterm" data-primary="code" data-secondary="implementing" id="codeimple"/>mục tiêu thứ hai, nền tảng của <a data-type="xref" href="ch08.html#ten-workspace-guidelines">“10 Nguyên tắc Workspace cho Trải nghiệm Lập trình viên Vượt trội”</a>, là khởi tạo microservice mới thật nhanh bằng cách dùng các template đã được kiểm chứng kỹ cho từng tech stack phù hợp. Với microservice flights được hiện thực bằng Node.js, chúng ta sẽ dùng một bootstrapper phổ biến là <a href="https://nodebootstrap.io">NodeBootstrap</a>. Với microservice reservation dựa trên Python, chúng ta sẽ dùng một <a href="https://oreil.ly/g1LIk">repository template trên GitHub</a> chứa phần lớn mã boilerplate mà chúng ta cần.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223569711448">
+<h5>Quyết định then chốt: Khởi động Microservice bằng các Template Tái sử dụng được</h5>
+<p>Sử dụng code template để khởi động nhanh việc phát triển microservice trong mỗi ngôn ngữ lập trình được hỗ trợ trong hệ sinh thái của bạn. Dùng template giúp tăng tốc phát triển mà không hy sinh chất lượng, đồng thời giữ cho các microservice khác nhau đồng nhất ở những đặc điểm cốt lõi.</p>
+</div></aside>
+
+<p>Dựa trên 10 nguyên tắc đó, việc dùng bất kỳ template nào cũng giả định rằng bạn đã có Docker hoạt động được và GNU Make, vì chúng ta sử dụng cả hai. Ngoài ra thì không có yêu cầu nào khác. Trong <a data-type="xref" href="ch08.html#ch-developer-workspace">Chương 8</a>, chúng ta đã chỉ ra cách thiết lập Docker trên nhiều nền tảng. GNU Make thường được cài sẵn trên macOS và các hệ Linux/Unix. Có nhiều cách để cài GNU Make trên Windows. Cách mà chúng tôi 
+<span class="keep-together">khuyến nghị</span> là <a href="https://oreil.ly/1JERY">Windows Subsystem for Linux</a>.</p>
+<div data-type="note" epub:type="note"><h1>Chỉnh sửa Mã trên Host, Chạy Bên trong Container</h1>
+<p>Lưu ý rằng trong toàn bộ các ví dụ tiếp theo của chương này, chúng ta giả định bạn làm việc trên máy host của mình mà không cần đăng nhập vào các Docker container.</p>
+</div>
+
+<p>Khi làm việc trên một dự án được container hóa, trình soạn thảo mã mà bạn yêu thích sẽ được cài trên máy macOS, Windows hoặc Linux của bạn, và bạn sẽ thực thi nhiều lệnh <code>make</code> khác nhau trên chính máy đó. Docker cần được cài đặt/sẵn sàng, và phần lớn kết quả từ các lệnh bạn chạy sẽ thực thi bên trong container,
+nhưng hiếm khi bạn phải shell trực tiếp vào container, trừ khi đang debug một vấn đề ở mức <a data-type="indexterm" data-primary="code" data-secondary="implementing" data-startref="codeimple" id="idm46223569650056"/>thấp.</p>
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="The Code Behind the Flights Microservice"><div class="sect2" id="idm46223569648552">
+<h2>Mã nguồn phía sau Microservice Flights</h2>
+
+<p>Để dùng NodeBootstrap nhằm khởi động nhanh một microservice Node/Express, bạn có thể cài bootstrapper của nó bằng <code>node install -g nodebootstrap</code> (nếu hệ thống của bạn đã có Node), hoặc clone <a href="https://oreil.ly/Hi-wn">repository template GitHub này</a>.</p>
+
+<p>Dù cách đầu có thể phần nào dễ hơn, chúng ta sẽ làm theo cách thứ hai vì không muốn giả định rằng bạn đã thiết lập Node trên hệ thống của mình. Hãy nhấn “Use this template” trên trang repository chính của nodebootstrap-microservice, như minh họa ở <a data-type="xref" href="#nodebootstrapmicroservice_mainrepo">Hình 9-3</a>.</p>
+
+<figure><div id="nodebootstrapmicroservice_mainrepo" class="figure">
+<img src="assets/msur_09in01.png" alt="msur 09in01"/>
+<h6><span class="label">Hình 9-3. </span>Trang repository chính của nodebootstrap-microservice</h6>
+</div></figure>
+
+<p>Sau khi đã tạo một repository mới cho microservice ms-flights ở vị trí mà bạn <a data-type="indexterm" data-primary="Nodebootstrap microservice" id="idm46223569641080"/>chọn, hãy checkout nó về máy phát triển của bạn và bắt đầu chỉnh sửa bằng cách viết mã.</p>
+
+<p>Một điểm hay của template NodeBootstrap là nó đi kèm hỗ trợ đầy đủ cho OAS của microservice. Hãy lấy đặc tả mà chúng ta đã thiết kế trước đó và đưa vào tệp <em>docs/api.yml</em>, thay thế đặc tả mẫu đang có sẵn ở đó. Hãy chắc chắn bạn đang ở trong thư mục con <em>docs</em>, rồi chạy <code>make start</code>:</p>
+
+<pre data-type="programlisting" data-code-language="shell">→ make start
+docker run -d --rm --name ms-nb-docs -p 3939:80 -v <code class="se">\</code>
+ms-flights/docs/api.yml:/usr/share/nginx/html/swagger.yaml <code class="se">\</code>
+-e <code class="nv">SPEC_URL</code><code class="o">=</code>swagger.yaml redocly/redoc:v2.0.0-rc.8-1
+49e0986e318288c8bf6934e3d50ba93537ddf3711453ba6333ced1425576ecdf
+server started at: http://0.0.0.0:3939</pre>
+
+<p>Thao tác này sẽ render đặc tả thành một template HTML đẹp mắt và
+cung cấp nó tại <em><a href="http://0.0.0.0:3939"><em class="hyperlink">http://0.0.0.0:3939</em></a></em>. Kết quả render có lẽ sẽ
+trông như <a data-type="xref" href="#Render_the_spec">Hình 9-4</a>.</p>
+
+<figure><div id="Render_the_spec" class="figure">
+<img src="assets/msur_09in02.png" alt="msur 09in02"/>
+<h6><span class="label">Hình 9-4. </span>OAS đã được render của microservice ms-flights</h6>
+</div></figure>
+
+<p>Microservice Nodebootstrap đi kèm một module mẫu tên “users”, nằm trong thư mục <em>lib/users</em>. Vì chúng ta không cần module quản lý người dùng mà lại cần module quản lý chuyến bay, hãy đổi tên thư mục đó thành <em>flights</em> và xóa một module mặc định khác là <em>lib/homedoc</em>, vì chúng ta cũng không cần tới nó. Khi xóa thư mục <em>lib/homedoc</em>, bạn cũng phải bỏ phần hook của nó trong <em>appConfig.js</em> ở thư mục gốc. Đoạn này nằm khoảng dòng 24 và có nội dung đại loại như sau:</p>
+
+<pre data-type="programlisting" data-code-language="javascript">  <code class="nx">app</code><code class="p">.</code><code class="nx">use</code><code class="p">(</code><code class="s1">'/'</code><code class="p">,</code>      <code class="nx">require</code><code class="p">(</code><code class="s1">'homedoc'</code><code class="p">));</code> <code class="c1">// Attach to root route</code></pre>
+
+<p>Tương tự, hãy thay đổi phần hookup cho module flights trong cùng tệp đó để dòng lệnh trở thành:</p>
+
+<pre data-type="programlisting" data-code-language="javascript"><code class="nx">app</code><code class="p">.</code><code class="nx">use</code><code class="p">(</code><code class="s1">'/flights'</code><code class="p">,</code> <code class="nx">require</code><code class="p">(</code><code class="s1">'flights'</code><code class="p">));</code> <code class="c1">// Attach to sub-route</code></pre>
+
+<p>Sau khi hoàn tất các chỉnh sửa này, hãy sửa
+<em>lib/flights/controllers/mappings.js</em> để thêm một số kiểm tra đầu vào
+và chỉ ra các hàm từ module actions của microservice sẽ được gọi cho từng route endpoint API trong hai endpoint của bạn:</p>
+
+<pre data-type="programlisting" data-code-language="javascript"><code class="kr">const</code> <code class="p">{</code><code class="nx">spieler</code><code class="p">,</code> <code class="nx">check</code><code class="p">,</code> <code class="nx">matchedData</code><code class="p">,</code> <code class="nx">sanitize</code><code class="p">}</code> <code class="o">=</code> <code class="nx">require</code><code class="p">(</code><code class="s1">'spieler'</code><code class="p">)();</code>
+
+<code class="kr">const</code> <code class="nx">router</code>      <code class="o">=</code> <code class="nx">require</code><code class="p">(</code><code class="s1">'express'</code><code class="p">).</code><code class="nx">Router</code><code class="p">({</code> <code class="nx">mergeParams</code><code class="o">:</code> <code class="kc">true</code> <code class="p">});</code>
+<code class="kr">const</code> <code class="nx">actions</code>     <code class="o">=</code> <code class="nx">require</code><code class="p">(</code><code class="s1">'./actions'</code><code class="p">);</code>
+
+<code class="kr">const</code> <code class="nx">log</code> <code class="o">=</code> <code class="nx">require</code><code class="p">(</code><code class="s2">"metalogger"</code><code class="p">)();</code>
+
+<code class="kr">const</code> <code class="nx">flightNoValidation</code> <code class="o">=</code> <code class="nx">check</code><code class="p">(</code><code class="s1">'flight_no'</code><code class="p">,</code>
+  <code class="s1">'flight_no must be at least 3 chars long and contain letters and numbers'</code><code class="p">)</code>
+  <code class="p">.</code><code class="nx">exists</code><code class="p">()</code>
+  <code class="p">.</code><code class="nx">isLength</code><code class="p">({</code> <code class="nx">min</code><code class="o">:</code> <code class="mi">3</code> <code class="p">})</code>
+  <code class="p">.</code><code class="nx">matches</code><code class="p">(</code><code class="sr">/[a-zA-Z]{1,4}\d+/</code><code class="p">)</code>
+
+<code class="kr">const</code> <code class="nx">dateTimeValidation</code> <code class="o">=</code> <code class="nx">check</code><code class="p">(</code><code class="s1">'departure_date_time'</code><code class="p">,</code>
+  <code class="s1">'departure_date_time must be in YYYY-MM-ddThh:mm format'</code><code class="p">)</code>
+  <code class="p">.</code><code class="nx">exists</code><code class="p">()</code>
+  <code class="p">.</code><code class="nx">matches</code><code class="p">(</code><code class="sr">/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/</code><code class="p">)</code>
+
+<code class="kr">const</code> <code class="nx">flightsValidator</code> <code class="o">=</code> <code class="nx">spieler</code><code class="p">([</code>
+  <code class="nx">flightNoValidation</code><code class="p">,</code>
+  <code class="nx">dateTimeValidation</code>
+<code class="p">]);</code>
+<code class="kr">const</code> <code class="nx">seatmapsValidator</code> <code class="o">=</code> <code class="nx">spieler</code><code class="p">([</code>
+  <code class="nx">flightNoValidation</code>
+<code class="p">]);</code>
+
+<code class="nx">router</code><code class="p">.</code><code class="nx">get</code><code class="p">(</code><code class="s1">'/'</code><code class="p">,</code> <code class="nx">flightsValidator</code><code class="p">,</code> <code class="nx">actions</code><code class="p">.</code><code class="nx">getFlightInfo</code><code class="p">);</code>
+<code class="nx">router</code><code class="p">.</code><code class="nx">get</code><code class="p">(</code><code class="s1">'/:flight_no/seat_map'</code><code class="p">,</code> <code class="nx">seatmapsValidator</code><code class="p">,</code> <code class="nx">actions</code><code class="p">.</code><code class="nx">getSeatMap</code><code class="p">);</code>
+
+<code class="nx">module</code><code class="p">.</code><code class="nx">exports</code> <code class="o">=</code> <code class="nx">router</code><code class="p">;</code></pre>
+
+<p>Như bạn có thể thấy, trong tệp này chúng ta đang thiết lập route cho hai endpoint chính và các validator để bảo đảm tham số đầu vào vừa tồn tại vừa đúng định dạng. Nếu không đúng, NodeBootstrap cũng có sẵn cơ chế thông báo lỗi chuẩn để báo cho client biết.</p>
+
+<p>Bây giờ hãy hiện thực một số logic. Trước tiên, chúng ta cần <a data-type="indexterm" data-primary="MySQL" data-secondary="tables" id="idm46223569449016"/>tạo các bảng MySQL và một ít dữ liệu mẫu. Như bạn có thể đoán, Nodebootstrap cũng cung cấp một giải pháp dễ dàng cho việc này dưới dạng database migration: các script mã hóa các thay đổi trên cơ sở dữ liệu và cho phép bạn áp dụng chúng về sau ở bất kỳ môi trường nào.</p>
+
+<p>Chúng ta có thể tạo một vài database migration <a data-type="indexterm" data-primary="migration, databases" data-secondary="make commands" id="idm46223569447496"/><a data-type="indexterm" data-primary="databases" data-secondary="migrations" data-tertiary="make commands" id="idm46223569339384"/>bằng một số lệnh <code>make</code> như sau:</p>
+
+<pre data-type="programlisting" data-code-language="shell">→ make migration-create <code class="nv">name</code><code class="o">=</code>seat-maps
+docker-compose -p msupandrunning up -d
+ms-flights-db is up-to-date
+Starting ms-flights ... <code class="k">done</code>
+docker-compose -p msupandrunning <code class="nb">exec </code>ms-flights
+  ./node_modules/db-migrate/bin/db-migrate create seat-maps --sql-file
+<code class="o">[</code>INFO<code class="o">]</code> Created migration at /opt/app/migrations/20200602055112-seat-maps.js
+<code class="o">[</code>INFO<code class="o">]</code> Created migration up sql file at
+  /opt/app/migrations/sqls/20200602055112-seat-maps-up.sql
+<code class="o">[</code>INFO<code class="o">]</code> Created migration down sql file at
+  /opt/app/migrations/sqls/20200602055112-seat-maps-down.sql
+sudo chown -R <code class="nv">$USER</code> ./migrations/sqls/
+<code class="o">[</code>sudo<code class="o">]</code> password <code class="k">for</code> irakli:
+
+→ make migration-create <code class="nv">name</code><code class="o">=</code>flights
+docker-compose -p msupandrunning up -d
+ms-flights-db is up-to-date
+ms-flights is up-to-date
+docker-compose -p msupandrunning <code class="nb">exec </code>ms-flights
+  ./node_modules/db-migrate/bin/db-migrate create flights --sql-file
+<code class="o">[</code>INFO<code class="o">]</code> Created migration at /opt/app/migrations/20200602055121-flights.js
+<code class="o">[</code>INFO<code class="o">]</code> Created migration up sql file
+  at /opt/app/migrations/sqls/20200602055121-flights-up.sql
+<code class="o">[</code>INFO<code class="o">]</code> Created migration down sql file
+  at /opt/app/migrations/sqls/20200602055121-flights-down.sql
+sudo chown -R <code class="nv">$USER</code> ./migrations/sqls/
+
+→ make migration-create <code class="nv">name</code><code class="o">=</code>sample-data
+docker-compose -p msupandrunning up -d
+ms-flights-db is up-to-date
+ms-flights is up-to-date
+docker-compose -p msupandrunning <code class="nb">exec </code>ms-flights
+  ./node_modules/db-migrate/bin/db-migrate create sample-data --sql-file
+<code class="o">[</code>INFO<code class="o">]</code> Created migration at
+  /opt/app/migrations/20200602055127-sample-data.js
+<code class="o">[</code>INFO<code class="o">]</code> Created migration up sql file at
+  /opt/app/migrations/sqls/20200602055127-sample-data-up.sql
+<code class="o">[</code>INFO<code class="o">]</code> Created migration down sql file at
+  /opt/app/migrations/sqls/20200602055127-sample-data-down.sql
+sudo chown -R <code class="nv">$USER</code> ./migrations/sqls/</pre>
+
+<p>Sau <em>bước này</em>, chúng ta nên mở các tệp SQL tương ứng và chèn nội dung trong các Ví dụ <a data-type="xref" data-xrefstyle="select:labelnumber" href="#seat_maps_up_sql">9-1</a>, <a data-type="xref" data-xrefstyle="select:labelnumber" href="#flights_up_sql">9-2</a> và <a data-type="xref" data-xrefstyle="select:labelnumber" href="#sample_data_up_sql">9-3</a> vào từng tệp.</p>
+<div id="seat_maps_up_sql" data-type="example">
+<h5><span class="label">Ví dụ 9-1. </span>/migrations/sqls/[date]-seat-maps-up.sql</h5>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">CREATE</code> <code class="k">TABLE</code> <code class="o">`</code><code class="n">seat_maps</code><code class="o">`</code> <code class="p">(</code>
+  <code class="o">`</code><code class="n">flight_no</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">seat_map</code><code class="o">`</code> <code class="n">json</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">origin_code</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">destination_code</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="k">PRIMARY</code> <code class="k">KEY</code> <code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">)</code>
+<code class="p">)</code> <code class="n">ENGINE</code><code class="o">=</code><code class="n">InnoDB</code> <code class="k">DEFAULT</code> <code class="n">CHARSET</code><code class="o">=</code><code class="n">utf8</code><code class="p">;</code></pre></div>
+<div id="flights_up_sql" data-type="example">
+<h5><span class="label">Ví dụ 9-2. </span>/migrations/sqls/[date]-flights-up.sql</h5>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">CREATE</code> <code class="k">TABLE</code> <code class="o">`</code><code class="n">flights</code><code class="o">`</code>  <code class="p">(</code>
+  <code class="o">`</code><code class="n">flight_id</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">36</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">flight_no</code><code class="o">`</code> <code class="nb">varchar</code><code class="p">(</code><code class="mi">10</code><code class="p">)</code> <code class="k">NOT</code> <code class="k">NULL</code><code class="p">,</code>
+  <code class="o">`</code><code class="n">flight_date</code><code class="o">`</code> <code class="n">datetime</code><code class="p">(</code><code class="mi">0</code><code class="p">)</code> <code class="k">NULL</code><code class="p">,</code>
+
+  <code class="k">PRIMARY</code> <code class="k">KEY</code> <code class="p">(</code><code class="o">`</code><code class="n">flight_id</code><code class="o">`</code><code class="p">),</code>
+
+  <code class="k">FOREIGN</code> <code class="k">KEY</code><code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">)</code>
+        <code class="k">REFERENCES</code> <code class="n">seat_maps</code><code class="p">(</code><code class="o">`</code><code class="n">flight_no</code><code class="o">`</code><code class="p">)</code>
+<code class="p">)</code> <code class="n">ENGINE</code><code class="o">=</code><code class="n">InnoDB</code> <code class="k">DEFAULT</code> <code class="n">CHARSET</code><code class="o">=</code><code class="n">utf8</code><code class="p">;</code></pre></div>
+<div id="sample_data_up_sql" data-type="example">
+<h5><span class="label">Ví dụ 9-3. </span>/migrations/sqls/[date]-sample-data-up.sql</h5>
+
+<pre data-type="programlisting" data-code-language="sql"><code class="k">INSERT</code> <code class="k">INTO</code> <code class="o">`</code><code class="n">seat_maps</code><code class="o">`</code>
+<code class="k">VALUES</code> <code class="p">(</code><code class="s1">'AA2532'</code><code class="p">,</code> <code class="s1">'{\"Cabin\": [{\"Row\": [{\"Seat\": [{\"Number\": \"A\",</code>
+<code class="s1">        \"Facilities\": [{\"Detail\": {\"content\": \"LegSpaceSeat\"}}],</code>
+<code class="s1">        \"exitRowInd\": false, \"premiumInd\": false, \"noInfantInd\": false,</code>
+<code class="s1">        \"restrictedReclineInd\": false}], \"RowNumber\": 8}],</code>
+<code class="s1">        \"Wing\": {\"lastRow\": 22, \"firstRow\": 14},</code>
+<code class="s1">        \"Column\": [{\"Column\": \"A\", \"Characteristics\": [\"Window\"]}],</code>
+<code class="s1">        \"lastRow\": 23, \"firstRow\": 8,</code>
+<code class="s1">        \"CabinClass\": {\"CabinType\": \"Economy\"}}]}'</code><code class="p">,</code> <code class="s1">'LAX'</code><code class="p">,</code> <code class="s1">'DCA'</code><code class="p">);</code></pre></div>
+
+<p>Khi đã có những tệp này, bạn có thể chỉ cần khởi động lại dự án bằng <code>make restart</code> để migration được áp dụng tự động (các migration mới sẽ được áp dụng ở mỗi lần khởi động dự án nhằm giữ mọi môi trường cài đặt nhất quán), hoặc có thể chạy tường minh một tác vụ áp migration bằng <code>make migrate</code>.</p>
+
+<p>Đối với các chỉnh sửa còn lại, bạn sẽ muốn:</p>
+<ol>
+<li>
+<p>Đổi <code>ms-nodebootstrap-example</code> thành ms-flights trong nhiều tệp khác nhau, nếu bạn không cài dự án bằng tiện ích <code>nodebootstrap</code> mà chỉ clone repository (cách đầu tiên sẽ tự đổi tên giúp bạn).</p>
+</li>
+<li>
+<p>Chỉnh sửa phần còn lại của mã nguồn để hiện thực các endpoint <code>flights</code> và <code>seat_maps</code>, đồng thời nối chúng với cơ sở dữ liệu.</p>
+</li>
+
+</ol>
+<div data-type="note" epub:type="note"><h1>Mã nguồn đầy đủ của ms-flights</h1>
+<p>Bạn có thể xem một phiên bản đang hoạt động của mã ms-flights mẫu tại <a href="https://oreil.ly/Microservices_UpandRunning_msflights">repository GitHub của cuốn sách này</a>.</p>
+</div>
+
+<p>Khi mọi thứ hoạt động ổn, bạn sẽ có thể truy cập endpoint <code>/flights</code> của mình ở local qua một URL như sau:</p>
+
+<pre data-type="programlisting">http://0.0.0.0:5501/flights?flight_no=AA34&amp;departure_date_time=2020-05-17T13:20</pre>
+
+<p>Endpoint <code>seat_maps</code> sẽ xuất hiện trong một URL như sau:</p>
+
+<pre data-type="programlisting">http://0.0.0.0:5501/flights/AA2532/seat_map</pre>
+
+<p>Hãy chắc chắn rằng bạn xem qua toàn bộ các target trong makefile. Hãy thử chạy một target để cảm nhận trải nghiệm dành cho lập trình viên mà template project mang lại, cũng như loại tiện ích mà bạn nên cố gắng cung cấp cho đội ngũ của mình thông qua các template. Để <code>make test</code> hoạt động, cần có thêm một số chỉnh sửa liên quan đến việc chúng ta đã xóa bớt chức năng khỏi dự án mẫu. Chúng ta không trình bày chi tiết các thay đổi đó ở đây, vì vậy tốt nhất là hãy xem trực tiếp <a href="https://oreil.ly/Microservices_UpandRunning_msflights">repository /ms-flights của cuốn sách này</a>, nơi đã có đầy đủ các chỉnh sửa cần thiết. Nếu gặp vấn đề, bạn cứ thoải mái gửi bug request.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect2" data-pdf-bookmark="Health Checks"><div class="sect2" id="idm46223569647608">
+<h2>Kiểm tra sức khỏe</h2>
+
+<p>Để quản lý vòng đời <a data-type="indexterm" data-primary="health checks" id="health"/>của các container mà ứng dụng sẽ được triển khai vào, hầu hết các giải pháp quản lý container (ví dụ Kubernetes, thứ mà chúng ta sẽ dùng ở phần sau của cuốn sách) đều cần dịch vụ phải expose một health endpoint. Trong trường hợp của Kubernetes, nhìn chung bạn nên cung cấp endpoint cho liveness và readiness.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223569070248">
+<h5>Quyết định then chốt: Khởi tạo Microservice từ các Template Tái sử dụng được</h5>
+<p>Để hiện thực một health-check endpoint, chúng ta sẽ dùng <a href="https://oreil.ly/nF9T-">bản thảo RFC</a> và một <a href="https://oreil.ly/ZyfBZ">phiên bản hiện thực Node.js của nó</a>.</p>
+</div></aside>
+
+<p>Template NodeBootstrap đã có sẵn một <a href="https://oreil.ly/EzEIi">bản hiện thực mẫu</a> cho việc này; chúng ta chỉ cần sửa lại cho phù hợp với codebase ms-flights.</p>
+
+<p>Hãy bắt đầu bằng cách thay các dòng 13–17 trong <em>appConfig.js</em> bằng đoạn mã như sau:</p>
+
+<pre data-type="programlisting" data-code-language="javascript"><code class="c1">// For Liveness Probe, defaults may be all you need.</code>
+<code class="kr">const</code> <code class="nx">livenessCheck</code> <code class="o">=</code> <code class="nx">healthcheck</code><code class="p">({</code><code class="s2">"path"</code> <code class="o">:</code> <code class="s2">"/ping"</code><code class="p">});</code>
+<code class="nx">app</code><code class="p">.</code><code class="nx">use</code><code class="p">(</code><code class="nx">livenessCheck</code><code class="p">.</code><code class="nx">express</code><code class="p">());</code>
+
+<code class="c1">// For readiness check, let's also test the DB</code>
+<code class="kr">const</code> <code class="nx">check</code> <code class="o">=</code> <code class="nx">healthcheck</code><code class="p">();</code>
+<code class="kr">const</code> <code class="nx">AdvancedHealthcheckers</code> <code class="o">=</code> <code class="nx">require</code><code class="p">(</code><code class="s1">'healthchecks-advanced'</code><code class="p">);</code>
+<code class="kr">const</code> <code class="nx">advCheckers</code> <code class="o">=</code> <code class="k">new</code> <code class="nx">AdvancedHealthcheckers</code><code class="p">();</code>
+
+<code class="c1">// Database health check is cached for 10000ms = 10 seconds!</code>
+<code class="nx">check</code><code class="p">.</code><code class="nx">addCheck</code><code class="p">(</code><code class="s1">'db'</code><code class="p">,</code> <code class="s1">'dbQuery'</code><code class="p">,</code> <code class="nx">advCheckers</code><code class="p">.</code><code class="nx">dbCheck</code><code class="p">,</code>
+  <code class="p">{</code><code class="nx">minCacheMs</code><code class="o">:</code> <code class="mi">10000</code><code class="p">});</code>
+<code class="nx">app</code><code class="p">.</code><code class="nx">use</code><code class="p">(</code><code class="nx">check</code><code class="p">.</code><code class="nx">express</code><code class="p">());</code></pre>
+
+<p class="less_space pagebreak-before">Thao tác này sẽ tạo một kiểm tra đơn giản kiểu “Tôi còn sống không?” tại <code>/ping</code> (trong Kubernetes gọi là <em>liveness probe</em>) và một kiểm tra nâng cao hơn kiểu “Cơ sở dữ liệu đã sẵn sàng chưa? Tôi đã thực sự làm được những việc 
+<span class="keep-together">hữu ích</span> chưa?” tại <code>/health</code> (trong Kubernetes gọi là <em>readiness probe</em>). Sử dụng hai probe cho tình trạng sức khỏe tổng thể là rất thuận tiện, vì một microservice đang chạy không phải lúc nào cũng đồng nghĩa với việc nó hoàn toàn hoạt động được. Nếu dependency của nó, chẳng hạn như cơ sở dữ liệu, chưa chạy xong hoặc đang bị down, thì nó sẽ chưa thực sự sẵn sàng cho công việc hữu ích.</p>
+
+<p>Đối số thứ tư <code>{minCacheMs: 10000}</code> trong lời gọi <code>.addCheck()</code> thiết lập thời lượng cache tối thiểu ở phía máy chủ, tính bằng mili giây. Điều đó có nghĩa là bạn có thể yêu cầu health-check middleware (module mà chúng ta sử dụng) chỉ chạy probe health check tốn kém, có truy vấn cơ sở dữ liệu, <a data-type="indexterm" data-primary="MySQL" data-secondary="health checks and" id="idm46223568872616"/>đối với MySQL tối đa mỗi 10 giây (10.000 mili giây) một lần!</p>
+
+<p>Ngay cả khi hạ tầng health-probing của bạn (ví dụ Kubernetes) gọi health-check endpoint rất thường xuyên, middleware cũng chỉ thực sự kích hoạt các lời gọi mà bạn đánh giá là đủ nhẹ. Với những lời gọi nặng hơn (ví dụ lời gọi cơ sở dữ liệu như truy vấn MySQL), middleware (module Maikai) sẽ trả về giá trị đã cache để tránh gây áp lực cho các hệ thống downstream như cơ sở dữ liệu. Để hoàn tất thiết lập, hãy sửa thêm tệp <em>libs/healthchecks-advanced/index.js</em> và đổi tên hàm thành <code>dbCheck</code>. Sau đó cập nhật câu truy vấn SQL để các dòng 7–10 trở thành:</p>
+
+<pre data-type="programlisting" data-code-language="javascript"><code class="nx">async</code> <code class="nx">dbCheck</code><code class="p">()</code> <code class="p">{</code>
+  <code class="kr">const</code> <code class="nx">start</code> <code class="o">=</code> <code class="k">new</code> <code class="nb">Date</code><code class="p">();</code>
+  <code class="kr">const</code> <code class="nx">conn</code> <code class="o">=</code> <code class="nx">await</code> <code class="nx">db</code><code class="p">.</code><code class="nx">conn</code><code class="p">();</code>
+  <code class="kr">const</code> <code class="nx">query</code> <code class="o">=</code> <code class="s1">'select count(1) from seat_maps'</code><code class="p">;</code></pre>
+
+<p>Nếu mọi thứ được thực hiện đúng và microservice đang chạy ở trạng thái khỏe mạnh, khi bạn chạy <code>curl http://0.0.0.0:5501/health</code>, bạn sẽ nhận được đầu ra của health endpoint trông như sau:</p>
+
+<pre data-type="programlisting" data-code-language="json"><code class="p">{</code>
+  <code class="nt">"details"</code><code class="p">:</code> <code class="p">{</code>
+    <code class="nt">"db:dbQuery"</code><code class="p">:</code> <code class="p">{</code>
+      <code class="nt">"status"</code><code class="p">:</code> <code class="s2">"pass"</code><code class="p">,</code>
+      <code class="nt">"metricValue"</code><code class="p">:</code> <code class="mi">15</code><code class="p">,</code>
+      <code class="nt">"metricUnit"</code><code class="p">:</code> <code class="s2">"ms"</code><code class="p">,</code>
+      <code class="nt">"time"</code><code class="p">:</code> <code class="s2">"2020-06-28T22:32:46.167Z"</code>
+    <code class="p">}</code>
+  <code class="p">},</code>
+  <code class="nt">"status"</code><code class="p">:</code> <code class="s2">"pass"</code>
+<code class="p">}</code></pre>
+
+<p>Nếu thay vào đó bạn chạy <code>curl http://0.0.0.0:5501/ping</code>, bạn sẽ nhận được đầu ra đơn giản hơn 
+<span class="keep-together">như sau:</span></p>
+
+<pre data-type="programlisting" data-code-language="json"><code class="p">{</code> <code class="nt">"status"</code><code class="p">:</code> <code class="s2">"pass"</code> <code class="p">}</code></pre>
+
+<p class="less_space pagebreak-before">Nếu gặp bất kỳ vấn đề nào khi tự chỉnh sửa mã, bạn có thể xem phần hiện thực đầy đủ của microservice tại <a href="https://oreil.ly/Microservices_UpandRunning_msflights">repository GitHub của cuốn sách này</a>.</p>
+
+<p>Giờ đây khi đã có một microservice ms-flights hoạt động đầy đủ được hiện thực bằng Node.js và MySQL, hãy <a data-type="indexterm" data-primary="health checks" data-startref="health" id="idm46223568761576"/>chuyển sang phần mã nguồn phía sau microservice ms-reservations.</p>
+</div></section>
+
+
+
+
+
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Introducing a Second Microservice to the Project"><div class="sect1" id="idm46223569072888">
+<h1>Đưa Microservice thứ hai vào Dự án</h1>
+
+<p>Chúng ta sẽ hiện thực microservice thứ hai <a data-type="indexterm" data-primary="Python" id="python"/><a data-type="indexterm" data-primary="Flask" id="flask"/>(ms-reservations) bằng Python và Flask, sử dụng Redis làm data store. Một lần nữa, đi theo mục tiêu thứ hai của <a data-type="xref" href="ch08.html#ten-workspace-guidelines">“10 Nguyên tắc Workspace cho Trải nghiệm Lập trình viên Vượt trội”</a>, chúng ta sẽ dùng một <a href="https://oreil.ly/rjRhK">repository template GitHub</a> cho stack Python/Flask.</p>
+
+<p>Như bạn có thể thấy, template này có nhiều đặc điểm giống với template NodeBootstrap mà chúng ta vừa dùng cho ms-flights: nó chỉ yêu cầu Docker và make hoạt động bình thường, có đầy đủ các target make để hỗ trợ trải nghiệm phát triển trơn tru giống như NodeBootstrap, và có sẵn cấu hình hoạt động cho các tác vụ phổ biến như testing, linting, v.v. Tuy nhiên, có một thứ nó còn thiếu là hỗ trợ cho database migration.</p>
+
+<p>Khác với MySQL, Redis thực ra không dùng schema cơ sở dữ liệu, nên không có nhu cầu cấp bách phải mã hóa các định nghĩa dữ liệu khác nhau cho việc tạo “bảng”. Bạn vẫn có thể dùng migration để tạo dữ liệu kiểm thử ở nhiều môi trường khác nhau, nhưng chúng tôi sẽ để nhiệm vụ đó cho người đọc tự khám phá và trải nghiệm. Đây là một trong những điểm template này khác với các template sử dụng cơ sở dữ liệu SQL.</p>
+
+<p>Tương tự ms-flights, chúng ta sẽ bắt đầu chỉnh sửa mã bằng cách đặt OAS phù hợp mà chúng ta đã phát triển ở phần trước của chương này vào <em>docs/api.yml</em> của repository ms-reservations mới. Sau khi chạy <code>make start</code> trong thư mục <em>docs</em> (lưu ý: đây là một makefile tách riêng với makefile chính!), bạn sẽ thấy đặc tả API cho reservations được render tại <em>http://0.0.0.0:3939</em>, như thể hiện trong <a data-type="xref" href="#API_spec_for_reserva_rendered">Hình 9-5</a>.</p>
+
+<figure><div id="API_spec_for_reserva_rendered" class="figure">
+<img src="assets/msur_09in03.png" alt="msur 09in03"/>
+<h6><span class="label">Hình 9-5. </span>OAS đã được render của microservice ms-reservations</h6>
+</div></figure>
+
+<p>Chúng ta sẽ bắt đầu chỉnh sửa template microservice của mình bằng cách hiện thực endpoint tạo reservation.</p>
+
+<p>Hãy mở <em>service.py</em> và thay mapping cho endpoint <code>update_user POST /users</code> bằng mapping cho <code>PUT /reservations</code>, như sau:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="nd">@app.route</code><code class="p">(</code><code class="s1">'/reservations'</code><code class="p">,</code> <code class="n">methods</code><code class="o">=</code><code class="p">[</code><code class="s1">'PUT'</code><code class="p">])</code>
+<code class="k">def</code> <code class="nf">reserve</code><code class="p">():</code>
+    <code class="sd">"""Endpoint that reserves a seat for a customer"""</code>
+    <code class="n">json_body</code> <code class="o">=</code> <code class="n">request</code><code class="o">.</code><code class="n">get_json</code><code class="p">(</code><code class="n">force</code><code class="o">=</code><code class="bp">True</code><code class="p">)</code>
+    <code class="n">resp</code> <code class="o">=</code> <code class="n">handlers</code><code class="o">.</code><code class="n">reserve</code><code class="p">(</code><code class="n">json_body</code><code class="p">)</code>
+    <code class="k">if</code> <code class="p">(</code><code class="n">resp</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s2">"status"</code><code class="p">)</code> <code class="o">==</code> <code class="s2">"success"</code><code class="p">):</code>
+        <code class="k">return</code> <code class="n">jsonify</code><code class="p">(</code><code class="n">resp</code><code class="p">)</code>
+    <code class="k">else</code><code class="p">:</code>
+        <code class="k">return</code> <code class="n">Response</code><code class="p">(</code>
+            <code class="n">json</code><code class="o">.</code><code class="n">dumps</code><code class="p">(</code><code class="n">resp</code><code class="p">),</code>
+            <code class="n">status</code><code class="o">=</code><code class="mi">403</code><code class="p">,</code>
+            <code class="n">mimetype</code><code class="o">=</code><code class="s1">'application/json'</code>
+        <code class="p">)</code></pre>
+
+<p>Như bạn có thể thấy, dựa trên kết quả của thao tác đặt chỗ, chúng ta sẽ trả về thành công hoặc lỗi cùng với mã lỗi HTTP tương ứng.</p>
+
+<p>Để hiện thực đầy đủ endpoint này, chúng ta cũng cần tạo một handler cho mapping đó (thường đảm nhiệm việc kiểm tra lỗi, nhưng ở đây chúng ta sẽ lược bỏ cho ngắn gọn) trong <em>src/handlers.py</em>. Ta sẽ làm điều này bằng cách thay handler tạo user <code>save_user</code> bằng đoạn sau:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="k">def</code> <code class="nf">reserve</code><code class="p">(</code><code class="n">json_body</code><code class="p">):</code>
+    <code class="sd">"""Save reservation callback"""</code>
+    <code class="k">return</code> <code class="n">model</code><code class="o">.</code><code class="n">save_reservation</code><code class="p">(</code><code class="n">json_body</code><code class="p">)</code></pre>
+
+<p>Quan trọng nhất, chúng ta cần hiện thực thao tác lưu thực sự vào cơ sở dữ liệu trong <em>src/models.py</em> bằng cách thay hàm <code>save_user</code> bằng đoạn tương tự như sau:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="k">def</code> <code class="nf">save_reservation</code><code class="p">(</code><code class="n">reservation</code><code class="p">):</code>
+    <code class="sd">"""Saves reservation into Redis database"""</code>
+
+    <code class="n">seat_num</code> <code class="o">=</code> <code class="n">reservation</code><code class="p">[</code><code class="s1">'seat_num'</code><code class="p">]</code>
+    <code class="k">try</code><code class="p">:</code>
+        <code class="n">result</code> <code class="o">=</code> <code class="n">this</code><code class="o">.</code><code class="n">redis_conn</code><code class="o">.</code><code class="n">hsetnx</code><code class="p">(</code>
+            <code class="n">this</code><code class="o">.</code><code class="n">tblprefix</code> <code class="o">+</code> <code class="n">reservation</code><code class="p">[</code><code class="s1">'flight_id'</code><code class="p">],</code>
+            <code class="n">seat_num</code><code class="p">,</code>
+            <code class="n">reservation</code><code class="p">[</code><code class="s1">'customer_id'</code><code class="p">])</code>
+    <code class="k">except</code> <code class="n">redis</code><code class="o">.</code><code class="n">RedisError</code><code class="p">:</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="p">{</code>
+            <code class="s2">"error"</code> <code class="p">:</code> <code class="n">f</code><code class="s2">"Unexpected error reserving {seat_num}"</code>
+        <code class="p">}</code>
+        <code class="n">log</code><code class="o">.</code><code class="n">error</code><code class="p">(</code><code class="n">f</code><code class="s2">"Unexpected error reserving {seat_num}"</code><code class="p">,</code> <code class="n">exc_info</code><code class="o">=</code><code class="bp">True</code><code class="p">)</code>
+    <code class="k">else</code><code class="p">:</code>
+        <code class="k">if</code> <code class="n">result</code> <code class="o">==</code> <code class="mi">1</code><code class="p">:</code>
+            <code class="n">response</code> <code class="o">=</code> <code class="p">{</code>
+                <code class="s2">"status"</code><code class="p">:</code> <code class="s2">"success"</code><code class="p">,</code>
+            <code class="p">}</code>
+        <code class="k">else</code><code class="p">:</code>
+            <code class="n">response</code> <code class="o">=</code> <code class="p">{</code>
+                <code class="s2">"error"</code> <code class="p">:</code> <code class="n">f</code><code class="s2">"Could not complete reservation for {seat_num}"</code><code class="p">,</code>
+                <code class="s2">"description"</code> <code class="p">:</code> <code class="s2">"Seat already reserved. Cannot double-book"</code>
+            <code class="p">}</code>
+
+    <code class="k">return</code> <code class="n">response</code></pre>
+
+<p>Đoạn mã này hiện thực đúng lệnh <code>hsetnx</code> trong Python mà trước đó chúng ta đã chạy thủ công trong Redis CLI khi minh họa lợi ích của việc dùng Redis cho mô hình dữ liệu của microservice reservations. Phương thức <code>hsetnx</code> của Redis chỉ đặt giá trị nếu trước đó chưa có giá trị nào được đặt. Đây là cách chúng ta tránh double-booking ngoài ý muốn một cách đáng tin cậy. Khi <code>hsetnx</code> bị từ chối do key đã có giá trị, nó trả về <code>0</code> (nghĩa là “0 bản ghi được sửa đổi”); nếu không, nó trả về <code>1</code>, giúp chúng ta biết có xảy ra xung đột hay không.</p>
+
+<p>Bạn cũng nên khai báo tiền tố ở cấp “bảng” cho reservations trong phạm vi module bằng cách thêm đoạn mã sau vào khoảng dòng 19 của <em>src/models.py</em>, ngay sau khai báo <code>this = sys.modules[__name__]</code>:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="n">this</code> <code class="o">=</code> <code class="n">sys</code><code class="o">.</code><code class="n">modules</code><code class="p">[</code><code class="nv-Magic">__name__</code><code class="p">]</code> <code class="c1"># Existing line</code>
+<code class="n">this</code><code class="o">.</code><code class="n">tblprefix</code> <code class="o">=</code> <code class="s2">"flights:"</code> <code class="c1"># New line</code></pre>
+
+<p>Template microservice mà chúng ta dùng đã sẵn chứa toàn bộ mã cần thiết để lấy credential và cấu hình liên quan từ môi trường rồi kết nối tới cơ sở dữ liệu Redis. Điều này được hiện thực theo hướng dẫn phổ biến nêu trong bản tuyên ngôn xây dựng ứng dụng cloud native tốt hơn, thường được biết đến với tên <a href="https://12factor.net/config">Twelve-Factor App</a>. Cụ thể, template này tuân theo factor thứ ba của tài liệu, nói về các cách quản lý cấu hình được khuyến nghị. Việc template chúng ta dùng đã hiện thực sẵn đầy đủ best practice này một lần nữa cho thấy lợi ích đáng kể của việc tận dụng code template trong phát triển microservice.</p>
+
+<p>Sau khi thực hiện toàn bộ các thay đổi cần thiết, endpoint sẽ hoạt động. Bạn sẽ có thể chạy <code>make</code> từ cấp cao nhất của mã nguồn; lệnh này sẽ build và chạy dự án tại 0.0.0.0:7701.</p>
+
+<p>Nếu gặp vấn đề ở bất kỳ thời điểm nào hoặc muốn xem
+log ứng dụng vì một lý do nào đó, bạn có thể làm điều này bằng target <code>logs-app</code> trong make:</p>
+
+<pre data-type="programlisting" data-code-language="shell">→ make logs-app
+docker-compose -p ms-workspace-demo logs -f ms-template-microservice
+Attaching to ms-template-microservice
+ms-template-microservice    <code class="p">|</code> <code class="o">[</code>INFO<code class="o">]</code> Starting gunicorn 20.0.4
+ms-template-microservice    <code class="p">|</code> <code class="o">[</code>INFO<code class="o">]</code> Listening at: http://0.0.0.0:5000 <code class="o">(</code>1<code class="o">)</code>
+ms-template-microservice    <code class="p">|</code> <code class="o">[</code>INFO<code class="o">]</code> Using worker: sync
+ms-template-microservice    <code class="p">|</code> <code class="o">[</code>INFO<code class="o">]</code> Booting worker with pid: 15</pre>
+
+<p>Bạn có thể nhận thấy log cho biết dịch vụ đang chạy trên cổng 5000, nhưng đó là cổng bên trong Docker container chứ không phải cổng 5000 trên máy host! Chúng ta ánh xạ cổng Flask mặc định 5000 sang 7701 trên máy host (máy của bạn). Bạn có thể xem log gộp của ứng dụng và cơ sở dữ liệu bằng cách chạy <code>make logs</code>, hoặc chỉ log cơ sở dữ liệu bằng <code>make logs-db</code>.</p>
+
+<p>Bây giờ hãy chạy một vài lệnh curl để chèn một số đặt chỗ:</p>
+
+<pre data-type="programlisting">curl --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{"seat_num":"12B","flight_id":"werty", "customer_id": "dfgh"}' \
+  http://0.0.0.0:7701/reservations
+
+curl --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{"seat_num":"12C","flight_id":"werty", "customer_id": "jkfl"}' \
+  http://0.0.0.0:7701/reservations</pre>
+
+<p>Chúng ta cũng có thể kiểm tra xem cơ chế bảo vệ khỏi double-booking ngoài ý muốn có hoạt động hay không. Hãy xác minh điều này bằng cách thử đặt một ghế đã được đặt rồi (ví dụ 12C):</p>
+
+<pre data-type="programlisting">curl -v --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{"seat_num":"12C","flight_id":"werty", "customer_id": "another"}' \
+  http://0.0.0.0:7701/reservations</pre>
+
+<p>Nó sẽ phản hồi bằng <code>HTTP 403</code> cùng một thông báo lỗi:</p>
+
+<pre data-type="programlisting">→ curl -v --header "Content-Type: application/json" \
+&gt;   --request PUT \
+&gt;   --data '{"seat_num":"12C","flight_id":"werty", "customer_id": "another"}' \
+&gt;   http://0.0.0.0:7701/reservations
+*   Trying 0.0.0.0:7701...
+* TCP_NODELAY set
+* Connected to 0.0.0.0 (127.0.0.1) port 7701 (#0)
+&gt; PUT /reservations HTTP/1.1
+&gt; Host: 0.0.0.0:7701
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; Content-Type: application/json
+&gt; Content-Length: 64
+&gt;
+&lt; HTTP/1.1 403 FORBIDDEN
+&lt; Server: gunicorn/20.0.4
+&lt; Connection: close
+&lt; Content-Type: application/json
+&lt; Content-Length: 111
+&lt;
+* Closing connection 0
+{"error": "Could not complete reservation for 12C",
+"description": "Seat already reserved. Cannot double-book"}</pre>
+
+<p>Hoàn hảo!</p>
+
+<p>Vì bây giờ chúng ta đã có một ít dữ liệu trong Redis store, nên có thể tiếp tục hiện thực
+endpoint lấy reservation. Một lần nữa, chúng ta sẽ bắt đầu từ định nghĩa mapping trong <em>service.py</em>, thay endpoint chào mặc định <code>/hello/&lt;name&gt;</code> bằng đoạn 
+<span class="keep-together">sau:</span></p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="nd">@app.route</code><code class="p">(</code><code class="s1">'/reservations'</code><code class="p">,</code> <code class="n">methods</code><code class="o">=</code><code class="p">[</code><code class="s1">'GET'</code><code class="p">])</code>
+<code class="k">def</code> <code class="nf">reservations</code><code class="p">():</code>
+    <code class="sd">""" Get Reservations Endpoint"""</code>
+    <code class="n">flight_id</code> <code class="o">=</code> <code class="n">request</code><code class="o">.</code><code class="n">args</code><code class="o">.</code><code class="n">get</code><code class="p">(</code><code class="s1">'flight_id'</code><code class="p">)</code>
+    <code class="n">resp</code> <code class="o">=</code> <code class="n">handlers</code><code class="o">.</code><code class="n">get_reservations</code><code class="p">(</code><code class="n">flight_id</code><code class="p">)</code>
+    <code class="k">return</code> <code class="n">jsonify</code><code class="p">(</code><code class="n">resp</code><code class="p">)</code></pre>
+
+<p>Phần hiện thực handler trong <em>src/handlers.py</em> một lần nữa sẽ khá đơn giản vì chúng ta bỏ qua bước kiểm tra đầu vào để giữ ngắn gọn:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="k">def</code> <code class="nf">get_reservations</code><code class="p">(</code><code class="n">flight_id</code><code class="p">):</code>
+    <code class="sd">"""Get reservations callback"""</code>
+    <code class="k">return</code> <code class="n">model</code><code class="o">.</code><code class="n">get_reservations</code><code class="p">(</code><code class="n">flight_id</code><code class="p">)</code></pre>
+
+<p>Mã model sẽ trông như sau:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="k">def</code> <code class="nf">get_reservations</code> <code class="p">(</code><code class="n">flight_id</code><code class="p">):</code>
+    <code class="sd">"""List of reservations for a flight, from Redis database"""</code>
+    <code class="k">try</code><code class="p">:</code>
+        <code class="n">key</code> <code class="o">=</code> <code class="n">this</code><code class="o">.</code><code class="n">tblprefix</code> <code class="o">+</code> <code class="n">flight_id</code>
+        <code class="n">reservations</code> <code class="o">=</code> <code class="n">this</code><code class="o">.</code><code class="n">redis_conn</code><code class="o">.</code><code class="n">hgetall</code><code class="p">(</code><code class="n">key</code><code class="p">)</code>
+    <code class="k">except</code> <code class="n">redis</code><code class="o">.</code><code class="n">RedisError</code><code class="p">:</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="p">{</code>
+            <code class="s2">"error"</code> <code class="p">:</code> <code class="s2">"Cannot retrieve reservations"</code>
+        <code class="p">}</code>
+        <code class="n">log</code><code class="o">.</code><code class="n">error</code><code class="p">(</code><code class="s2">"Error retrieving reservations from Redis"</code><code class="p">,</code>
+            <code class="n">exc_info</code><code class="o">=</code><code class="bp">True</code><code class="p">)</code>
+    <code class="k">else</code><code class="p">:</code>
+        <code class="n">response</code> <code class="o">=</code> <code class="n">reservations</code>
+
+    <code class="k">return</code> <code class="n">response</code></pre>
+
+<p>Để kiểm thử endpoint này, chúng ta có thể gửi một lệnh curl và xác minh rằng mình nhận được <a data-type="indexterm" data-primary="JSON" data-secondary="curl command and" id="idm46223568215400"/>response JSON như mong đợi:</p>
+
+<pre data-type="programlisting" data-code-language="python"><code class="err">→</code> <code class="n">curl</code> <code class="o">-</code><code class="n">v</code>  <code class="n">http</code><code class="p">:</code><code class="o">//</code><code class="mf">0.0</code><code class="o">.</code><code class="mf">0.0</code><code class="p">:</code><code class="mi">7701</code><code class="o">/</code><code class="n">reservations</code><code class="err">?</code><code class="n">flight_id</code><code class="o">=</code><code class="n">werty</code>
+<code class="o">*</code>   <code class="n">Trying</code> <code class="mf">0.0</code><code class="o">.</code><code class="mf">0.0</code><code class="p">:</code><code class="mf">7701.</code><code class="o">..</code>
+<code class="o">*</code> <code class="n">TCP_NODELAY</code> <code class="nb">set</code>
+<code class="o">&gt;</code> <code class="n">GET</code> <code class="o">/</code><code class="n">reservations</code><code class="err">?</code><code class="n">flight_id</code><code class="o">=</code><code class="n">werty</code> <code class="n">HTTP</code><code class="o">/</code><code class="mf">1.1</code>
+<code class="o">&gt;</code> <code class="n">Host</code><code class="p">:</code> <code class="mf">0.0</code><code class="o">.</code><code class="mf">0.0</code><code class="p">:</code><code class="mi">7701</code>
+<code class="o">&gt;</code> <code class="n">Accept</code><code class="p">:</code> <code class="o">*/*</code>
+<code class="o">&gt;</code>
+<code class="o">&lt;</code> <code class="n">HTTP</code><code class="o">/</code><code class="mf">1.1</code> <code class="mi">200</code> <code class="n">OK</code>
+<code class="o">&lt;</code> <code class="n">Server</code><code class="p">:</code> <code class="n">gunicorn</code><code class="o">/</code><code class="mf">20.0</code><code class="o">.</code><code class="mi">4</code>
+<code class="o">&lt;</code> <code class="n">Connection</code><code class="p">:</code> <code class="n">close</code>
+<code class="o">&lt;</code> <code class="n">Content</code><code class="o">-</code><code class="n">Type</code><code class="p">:</code> <code class="n">application</code><code class="o">/</code><code class="n">json</code>
+<code class="o">&lt;</code> <code class="n">Content</code><code class="o">-</code><code class="n">Length</code><code class="p">:</code> <code class="mi">90</code>
+<code class="o">&lt;</code>
+<code class="p">{</code>
+  <code class="s2">"12B"</code><code class="p">:</code> <code class="s2">"dfgh"</code><code class="p">,</code>
+  <code class="s2">"12C"</code><code class="p">:</code> <code class="s2">"jkfl"</code><code class="p">,</code>
+<code class="p">}</code>
+<code class="o">*</code> <code class="n">Closing</code> <code class="n">connection</code> <code class="mi">0</code></pre>
+<div data-type="note" epub:type="note"><h1>Mã nguồn đầy đủ của ms-reservations</h1>
+<p>Bạn có thể xem một phiên bản hoạt động của mã ms-reservations mẫu tại <a href="https://oreil.ly/Microservices_UpandRunning_msreservations">trang GitHub của cuốn sách này</a>.</p>
+</div>
+
+<p>Hãy xem qua và thử sử dụng các target make khác nhau có sẵn trong repository để cảm nhận rõ hơn những gì bạn nhận được từ
+template mà bộ mã này được bootstrap từ đó.</p>
+
+<p>Bạn cũng nên tận dụng cơ hội này để nghỉ một chút và tự thưởng cho mình—
+bạn vừa tạo ra và chạy được hai microservice có kích thước hợp lý, được hiện thực rất gọn gàng và tách biệt stack một cách đẹp mắt! Tuyệt vời!</p>
+
+<p>Bây giờ, việc chúng ta cần làm là tìm ra cách chạy hai microservice này (và mọi thành phần tương lai khác mà bạn có thể tạo thêm) như một khối thống nhất. Để làm điều đó, chúng ta sẽ giới thiệu khái niệm <a data-type="indexterm" data-primary="Python" data-startref="python" id="idm46223567973416"/><a data-type="indexterm" data-primary="Flask" data-startref="flask"/>“umbrella project” và giải thích cách phát triển nó.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Hooking Services Up with an Umbrella Project"><div class="sect1" id="idm46223568757528">
+<h1>Kết nối các Dịch vụ bằng một Umbrella Project</h1>
+
+<p>Phần lớn thời gian của nhóm nên được dành cho việc phát triển từng microservice riêng lẻ <a data-type="indexterm" data-primary="umbrella projects" id="umbrella"/>. Điều này rất quan trọng để bảo đảm tính tự chủ của nhóm, từ đó dẫn đến việc giảm nhu cầu phối hợp, vốn luôn rất quan trọng; và phần lớn công việc thiết kế hệ thống theo phong cách microservice của chúng ta thực sự nên hướng đến việc tối thiểu hóa nhu cầu phối hợp. Tuy nhiên, đến một thời điểm nào đó, chúng ta vẫn cần thử toàn bộ dự án, tức tất cả microservice cùng hoạt động với nhau. Dù nhu cầu này tương đối hiếm, việc làm cho nó trở nên dễ dàng là vô cùng quan trọng, đó là lý do nguyên tắc thứ tư của <a data-type="xref" href="ch08.html#ten-workspace-guidelines">“10 Nguyên tắc Workspace cho Trải nghiệm Lập trình viên Vượt trội”</a> nêu rằng: “Chạy một microservice đơn lẻ và/hoặc một phân hệ gồm nhiều microservice phải dễ như nhau.”</p>
+
+<p>Chúng ta cần một <em>umbrella project</em> dễ sử dụng, có thể khởi chạy toàn bộ các dự án con đặc thù cho từng microservice chỉ bằng một lệnh đơn giản và làm cho chúng phối hợp trơn tru với nhau, cho đến lúc chúng ta quyết định dừng umbrella project cùng tất cả thành phần của nó. Việc này dĩ nhiên cũng phải thật dễ thực hiện. Mọi thứ mà chúng ta muốn lập trình viên làm mà không mắc lỗi thì đều phải được làm cho dễ!</p>
+
+<p>Để triển khai một umbrella project dễ dùng, chúng ta sẽ dùng template workspace microservices có tại <a href="https://oreil.ly/VpyDJ">trang GitHub này</a> và thay vào đó khởi tạo workspace của mình từ <a href="https://oreil.ly/Microservices_UpandRunning_workspace">repository GitHub của cuốn sách này</a>.</p>
+<aside data-type="sidebar" epub:type="sidebar"><div class="sidebar" id="idm46223567964696">
+<h5>Quyết định then chốt: Dùng Faux Git Submodules</h5>
+<p>Để checkout repository của từng microservice bên dưới umbrella repository, chúng ta dùng dự án mã nguồn mở <a href="https://oreil.ly/ic_c0">Faux Git Submodules</a>. Ý tưởng là giúp bạn dễ dàng đi vào một thư mục con trong workspace repository chứa một microservice và xử lý nó như một repository hoạt động đầy đủ, nơi bạn có thể update, commit mã và push. Mục đích cơ bản giống hệt Git submodule thông thường, chỉ khác ở chỗ ai từng dùng submodule đều biết rằng submodule thật có thể hoạt động khó đoán và thường rất phiền phức. Theo quan điểm của chúng tôi, faux submodule đơn giản hơn nhiều và hoạt động ổn định hơn.</p>
+</div></aside>
+
+<p>Chúng ta sẽ bắt đầu bằng cách khai báo hai repo vừa tạo là các thành phần của workspace mới, bằng cách chỉnh tệp <em>fgs.json</em> thành dạng như sau:</p>
+
+<pre data-type="programlisting" data-code-language="json"><code class="p">{</code>
+  <code class="nt">"ms-flights"</code> <code class="p">:</code> <code class="p">{</code>
+    <code class="nt">"url"</code>  <code class="p">:</code> <code class="s2">"https://github.com/implementing-microservices/ms-flights"</code>
+  <code class="p">},</code>
+
+  <code class="nt">"ms-reservations"</code> <code class="p">:</code> <code class="p">{</code>
+    <code class="nt">"url"</code> <code class="p">:</code> <code class="s2">"https://github.com/implementing-microservices/ms-reservations"</code>
+  <code class="p">}</code>
+<code class="p">}</code></pre>
+
+<p>Trong cấu hình vừa rồi, chúng ta khai báo ms-flights và ms-reservations bằng giao thức chỉ đọc “http://”. Việc này được làm để bạn có thể làm theo ví dụ. Trong dự án thực tế, bạn sẽ muốn pull repository của mình bằng giao thức “git://” có quyền đọc/ghi để có thể chỉnh sửa chúng.</p>
+
+<p>Bây giờ khi đã cấu hình xong <em>repos.json</em>, hãy kéo các microservice ms-flights và ms-reservations vào workspace:</p>
+
+<pre data-type="programlisting" data-code-language="shell">→ make update
+git clone -b master <code class="se">\</code>
+  https://github.com/implementing-microservices/ms-flights ms-flights
+Cloning into <code class="s1">'ms-flights'</code>...
+
+git clone -b master <code class="se">\</code>
+  https://github.com/implementing-microservices/ms-reservations ms-reservations
+Cloning into <code class="s1">'ms-reservations'</code>...</pre>
+<div data-type="note" epub:type="note"><h6>Lưu ý</h6>
+<p>Thao tác này cũng hữu ích ở chỗ nó thêm các repository đã checkout vào <em>.gitignore</em> của thư mục cha, để ngăn repository cha cố commit lặp chúng vào sai vị trí.</p>
+</div>
+
+<p>Chúng ta cũng cần sửa hai script <em>bin/start.sh</em> và <em>bin/stop.sh</em> để thay đổi so với mặc định. Chúng ta sẽ chỉnh <em>bin/start.sh</em> như trong <a data-type="xref" href="#bin_start_sh">Ví dụ 9-4</a>.</p>
+<div id="bin_start_sh" data-type="example">
+<h5><span class="label">Ví dụ 9-4. </span>bin/start.sh</h5>
+
+<pre data-type="programlisting" data-code-language="shell"><code class="c">#!/usr/bin/env bash</code>
+<code class="nb">set</code> -eu
+
+<code class="nb">export </code><code class="nv">COMPOSE_PROJECT_NAME</code><code class="o">=</code>msupandrunning
+
+<code class="nb">pushd </code>ms-flights <code class="o">&amp;&amp;</code> make start
+<code class="nb">popd</code>
+<code class="nb">pushd </code>ms-reservations <code class="o">&amp;&amp;</code> make start
+<code class="nb">popd</code>
+
+make proxystarts</pre></div>
+
+<p>Hãy chỉnh <em>.bin/stop.sh</em> như trong <a data-type="xref" href="#bin_stop_sh">Ví dụ 9-5</a>.</p>
+<div id="bin_stop_sh" data-type="example">
+<h5><span class="label">Ví dụ 9-5. </span>bin/stop.sh</h5>
+
+<pre data-type="programlisting" data-code-language="shell"><code class="c">#!/usr/bin/env bash</code>
+<code class="nb">set</code> -eu
+
+<code class="nb">export </code><code class="nv">COMPOSE_PROJECT_NAME</code><code class="o">=</code>msupandrunning
+
+<code class="nb">pushd </code>ms-flights <code class="o">&amp;&amp;</code> make stop
+<code class="nb">popd</code>
+
+<code class="nb">pushd </code>ms-reservations <code class="o">&amp;&amp;</code> make stop
+<code class="nb">popd</code>
+
+make proxystop</pre></div>
+
+<p>Để giữ mọi thứ đơn giản nhưng vẫn tự động hóa mạnh mẽ, thiết lập workspace của chúng ta dùng <a href="https://oreil.ly/I-ddh">Traefik edge router</a> để định tuyến liền mạch tới các microservice. Nó được cài đặt thông qua <a href="https://oreil.ly/vBvwS">tệp <em>docker-compose.yml</em></a> của chúng ta. Ngoài ra, chúng ta cần thêm các label liên quan đến Traefik vào tệp <em>docker-compose.yml</em> của cả hai microservice để bảo đảm định tuyến đúng cho các dịch vụ đó, như trong các Ví dụ <a data-type="xref" data-xrefstyle="select:labelnumber" href="#msflights_dockercompose_yaml">9-6</a> và <a data-type="xref" data-xrefstyle="select:labelnumber" href="#msreservations_dockercompose_yaml">9-7</a>.</p>
+<div id="msflights_dockercompose_yaml" data-type="example">
+<h5><span class="label">Ví dụ 9-6. </span>ms-flights/docker-compose.yaml</h5>
+
+<pre data-type="programlisting" data-code-language="yaml"><code class="nt">services</code><code class="p">:</code>
+  <code class="nt">ms-flights</code><code class="p">:</code>
+    <code class="nt">container_name</code><code class="p">:</code> <code class="l-Scalar-Plain">ms-flights</code>
+    <code class="nt">labels</code><code class="p">:</code>
+      <code class="p-Indicator">-</code> <code class="s">"traefik.enable=true"</code>
+      <code class="p-Indicator">-</code> <code class="s">"traefik.http.routers.ms-flights.rule=PathPrefix(`/reservations`)"</code></pre></div>
+<div id="msreservations_dockercompose_yaml" data-type="example">
+<h5><span class="label">Ví dụ 9-7. </span>ms-reservations/docker-compose.yaml</h5>
+
+<pre data-type="programlisting" data-code-language="yaml"><code class="nt">services</code><code class="p">:</code>
+  <code class="nt">ms-reservations</code><code class="p">:</code>
+    <code class="nt">container_name</code><code class="p">:</code> <code class="l-Scalar-Plain">ms-reservations</code>
+    <code class="nt">labels</code><code class="p">:</code>
+      <code class="p-Indicator">-</code> <code class="s">"traefik.enable=true"</code>
+      <code class="p-Indicator">-</code> <code class="s">"traefik.http.routers.ms-reservations.rule=PathPrefix(`/reservations`)"</code></pre></div>
+
+<p>Chúng ta cũng cần cập nhật tên của umbrella project (đóng vai trò namespace và tên mạng cho toàn bộ dịch vụ) trong makefile của workspace, để thay vì <code>project:=ms-workspace-demo</code>, nó trở thành:</p>
+
+<pre data-type="programlisting">project:=msupandrunning</pre>
+
+<p>Khi bạn khởi động workspace bằng cách chạy <code>make start</code> ở cấp workspace, bạn sẽ có thể truy cập cả hai microservice trong trạng thái đã được gắn vào workspace. Chúng ta gắn Traefik vào cổng local 9080, biến <em><a href="http://0.0.0.0:9080/"><em class="hyperlink">http://0.0.0.0:9080/</em></a></em> thành base URI. Vì vậy, hai lệnh sau sẽ truy vấn hệ thống reservations và flights:</p>
+
+<pre data-type="programlisting">&gt; curl http://0.0.0.0:9080/reservations?flight_id=qwerty
+&gt; curl \
+  http://0.0.0.0:9080/flights?\
+  flight_no=AA34&amp;departure_date_time=2020-05-17T13:20</pre>
+
+<p>Bạn có thể xem toàn bộ mã nguồn của <a data-type="indexterm" data-primary="umbrella projects" data-startref="umbrella" id="idm46223567734680"/>umbrella project tại <a href="https://oreil.ly/Microservices_UpandRunning_workspace">trang GitHub của cuốn sách này</a>.</p>
+</div></section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<section data-type="sect1" data-pdf-bookmark="Summary"><div class="sect1" id="idm46223567971112">
+<h1>Tóm tắt</h1>
+
+<p>Trong chương này, chúng ta đã tập hợp rất nhiều hướng dẫn về thiết kế hệ thống và hiện thực mã nguồn mà trước đó đã được lần lượt giới thiệu, nhằm cung cấp một triển khai end-to-end cho hai microservice mạnh mẽ, cùng với một umbrella workspace cho phép làm việc với các dịch vụ này riêng lẻ hoặc như một dự án thống nhất. Chúng ta đã làm điều đó thông qua việc áp dụng từng bước phương pháp SEED(S) mạnh mẽ, thiết kế các mô hình dữ liệu riêng biệt và học cách khởi động nhanh phần hiện thực mã nguồn từ những template project vững chắc.</p>
+
+<p>Khả năng ghép nối nhanh chóng và hiệu quả các thành phần được mô-đun hóa tốt có thể tạo ra khác biệt rất lớn trong khả năng triển khai thành công các dự án microservice. Có một khoảng cách rất lớn giữa những gì bạn có thể đạt được trong chương này với việc ai đó phải tốn hàng tuần để lần mò phần boilerplate cơ bản hoặc sa vào mê cung của những quyết định sai lầm. Khoảng cách đó có thể chính là ranh giới giữa thành công và thất bại của cả sáng kiến.</p>
+</div></section>
+
+
+
+
+
+
+
+<div data-type="footnotes"><p data-type="footnote" id="idm46223571041976"><sup><a href="ch09.html#idm46223571041976-marker">1</a></sup> Với mục đích minh họa, chúng ta đang sử dụng cấu trúc đối tượng Seat Map từ <a href="https://oreil.ly/oQA29">Seat Map RESTful API của Sabre</a>, một chuẩn vàng của ngành.</p></div></div></section></body></html>
