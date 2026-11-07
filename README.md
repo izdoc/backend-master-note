@@ -21,3 +21,12 @@ Mã trong tài liệu phục vụ minh họa, chưa phải ứng dụng hoàn ch
 ## Microservices: Up and Running
 
 [Bản tiếng Việt và toàn bộ tài nguyên sách](microservicesupandrunning_vi_1.0/).
+
+## Nghiệp vụ và kiến trúc hệ thống chứng khoán
+
+[Đọc bộ Securities Wiki](securities-wiki/README.md) · [Mục lục 38 bài và trang tra cứu](securities-wiki/INDEX.md)
+
+Bộ training tiếng Việt theo 14 chuyên mục: nền tảng chứng khoán, vận hành Sở, kết nối CTCK, phòng ban, bảng giá, khớp lệnh, margin, thanh toán/đối soát, quản trị rủi ro, kiến trúc và vận hành. Có lộ trình 8 tuần, 6 workshop, 30 câu hỏi có đáp án, capstone, lab Python offline và 4 thư mục skill để cập nhật nội dung.
+
+Mốc rà soát nguồn: 07/11/2026. Tài liệu phân biệt quy định đã xác minh, thay đổi sắp có hiệu lực và kiến trúc minh họa; xem sổ nguồn và regulatory watch trước khi áp dụng.
+

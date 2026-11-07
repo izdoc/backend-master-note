@@ -1,0 +1,76 @@
+{
+  "purpose": "TRAINING_ONLY_NOT_APPROVED_FOR_PRODUCTION",
+  "as_of": "2026-11-07",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "review_status": "selected_official_clauses_reviewed_not_full_production_signoff",
+  "markets": [
+    {
+      "venue": "HOSE",
+      "instrument_class": "ordinary_equity",
+      "source_ids": [
+        "S16",
+        "S17"
+      ],
+      "lot": 100,
+      "normal_band_percent": 7,
+      "tick_bands": [
+        {
+          "min": 0,
+          "max_exclusive": 10000,
+          "tick": 10
+        },
+        {
+          "min": 10000,
+          "max_exclusive": 50000,
+          "tick": 50
+        },
+        {
+          "min": 50000,
+          "max_exclusive": null,
+          "tick": 100
+        }
+      ]
+    },
+    {
+      "venue": "HNX",
+      "instrument_class": "ordinary_equity",
+      "source_ids": [
+        "S17"
+      ],
+      "lot": 100,
+      "normal_band_percent": 10,
+      "tick": 100,
+      "after_hours_label": "limit_without_price",
+      "future_change": "See regulatory-watch; listed equities transfer plan December 2026"
+    },
+    {
+      "venue": "UPCOM",
+      "instrument_class": "ordinary_equity",
+      "source_ids": [
+        "S02",
+        "S05"
+      ],
+      "production_approval": false,
+      "reason": "2026 full regulation not reviewed; do not derive production values"
+    }
+  ],
+  "settlement": {
+    "days_for_equity_teaching_example": 2,
+    "source_ids": [
+      "S09",
+      "S19"
+    ],
+    "holidays": [],
+    "holiday_status": "empty synthetic calendar, not official calendar"
+  },
+  "fee": {
+    "rate": "0.0015",
+    "status": "synthetic_example_not_legal_rate"
+  },
+  "gateway": {
+    "ip": null,
+    "port": null,
+    "wire_schema": null,
+    "status": "requires_official_member_specification"
+  }
+}

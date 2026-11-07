@@ -1,0 +1,238 @@
+[
+  {
+    "category": "00-start-here",
+    "title": "Lộ trình và cách học",
+    "pages": [
+      {
+        "title": "Lộ trình training 8 tuần",
+        "path": "docs/00-start-here/learning-path.md"
+      }
+    ]
+  },
+  {
+    "category": "01-market-foundations",
+    "title": "Nền tảng thị trường",
+    "pages": [
+      {
+        "title": "Hệ sinh thái chứng khoán Việt Nam",
+        "path": "docs/01-market-foundations/ecosystem.md"
+      },
+      {
+        "title": "Sản phẩm: cổ phiếu, trái phiếu, quỹ, chứng quyền, phái sinh",
+        "path": "docs/01-market-foundations/products.md"
+      },
+      {
+        "title": "Tài khoản, tiểu khoản và các loại số dư",
+        "path": "docs/01-market-foundations/accounts-and-balances.md"
+      },
+      {
+        "title": "Phái sinh, trái phiếu và các dòng nghiệp vụ mở rộng",
+        "path": "docs/01-market-foundations/derivatives-and-bonds.md"
+      }
+    ]
+  },
+  {
+    "category": "02-exchange-operations",
+    "title": "Vận hành sở giao dịch",
+    "pages": [
+      {
+        "title": "Một ngày vận hành ở sở giao dịch",
+        "path": "docs/02-exchange-operations/exchange-day.md"
+      },
+      {
+        "title": "Ma trận thị trường và cấu hình có ngày hiệu lực",
+        "path": "docs/02-exchange-operations/market-rules.md"
+      }
+    ]
+  },
+  {
+    "category": "03-trading-and-matching",
+    "title": "Giao dịch và khớp lệnh",
+    "pages": [
+      {
+        "title": "Loại lệnh và điều kiện thực hiện",
+        "path": "docs/03-trading-and-matching/order-types.md"
+      },
+      {
+        "title": "Khớp liên tục: giá, thời gian và nhiều mức giá",
+        "path": "docs/03-trading-and-matching/continuous-matching.md"
+      },
+      {
+        "title": "Khớp định kỳ, sau giờ và thỏa thuận",
+        "path": "docs/03-trading-and-matching/auction-and-negotiated.md"
+      },
+      {
+        "title": "Vòng đời lệnh và cuộc đua giữa khớp, hủy, sửa",
+        "path": "docs/03-trading-and-matching/order-lifecycle.md"
+      }
+    ]
+  },
+  {
+    "category": "04-broker-departments",
+    "title": "Nghiệp vụ công ty chứng khoán",
+    "pages": [
+      {
+        "title": "Bản đồ phòng ban và trách nhiệm giao dịch",
+        "path": "docs/04-broker-departments/operating-model.md"
+      },
+      {
+        "title": "Onboarding, ủy quyền và quản lý tiền",
+        "path": "docs/04-broker-departments/customer-and-cash.md"
+      },
+      {
+        "title": "Margin, tài sản bảo đảm và thanh khoản công ty",
+        "path": "docs/04-broker-departments/margin-and-treasury.md"
+      },
+      {
+        "title": "Khách tổ chức, tự doanh, IB và nghiên cứu",
+        "path": "docs/04-broker-departments/institutional-business.md"
+      }
+    ]
+  },
+  {
+    "category": "05-connectivity",
+    "title": "Kết nối thị trường",
+    "pages": [
+      {
+        "title": "CTCK kết nối Sở: tuyến lệnh, dữ liệu và sau giao dịch",
+        "path": "docs/05-connectivity/broker-to-exchange.md"
+      },
+      {
+        "title": "FIX, sequence, recovery và idempotency",
+        "path": "docs/05-connectivity/protocol-recovery.md"
+      }
+    ]
+  },
+  {
+    "category": "06-market-data",
+    "title": "Bảng điện và dữ liệu thị trường",
+    "pages": [
+      {
+        "title": "Market data pipeline: snapshot, delta và phân phối",
+        "path": "docs/06-market-data/market-data-pipeline.md"
+      },
+      {
+        "title": "Đọc bảng điện: giá, khối lượng và tín hiệu",
+        "path": "docs/06-market-data/reading-price-board.md"
+      }
+    ]
+  },
+  {
+    "category": "07-post-trade",
+    "title": "Sau giao dịch",
+    "pages": [
+      {
+        "title": "Bù trừ, thanh toán, DvP và CCP",
+        "path": "docs/07-post-trade/clearing-settlement.md"
+      },
+      {
+        "title": "Lưu ký, thực hiện quyền và chuyển khoản chứng khoán",
+        "path": "docs/07-post-trade/corporate-actions.md"
+      },
+      {
+        "title": "Sổ cái và đối soát nhiều lớp",
+        "path": "docs/07-post-trade/ledger-reconciliation.md"
+      }
+    ]
+  },
+  {
+    "category": "08-risk-and-compliance",
+    "title": "Rủi ro và tuân thủ",
+    "pages": [
+      {
+        "title": "Tuân thủ, giám sát thị trường và audit trail",
+        "path": "docs/08-risk-and-compliance/compliance-and-audit.md"
+      },
+      {
+        "title": "RMS và kiểm soát trước, trong, sau giao dịch",
+        "path": "docs/08-risk-and-compliance/risk-controls.md"
+      }
+    ]
+  },
+  {
+    "category": "09-solution-architecture",
+    "title": "Kiến trúc giải pháp",
+    "pages": [
+      {
+        "title": "Kiến trúc tham chiếu cho công ty chứng khoán",
+        "path": "docs/09-solution-architecture/reference-architecture.md"
+      },
+      {
+        "title": "Data model, API contract và sự kiện",
+        "path": "docs/09-solution-architecture/data-api-events.md"
+      },
+      {
+        "title": "Thiết kế .NET và SQL Server cho đường ghi tài sản",
+        "path": "docs/09-solution-architecture/dotnet-sql-design.md"
+      }
+    ]
+  },
+  {
+    "category": "10-operations-and-security",
+    "title": "Vận hành và bảo mật",
+    "pages": [
+      {
+        "title": "Runbook sự cố, BCP và disaster recovery",
+        "path": "docs/10-operations-and-security/incident-bcp-dr.md"
+      },
+      {
+        "title": "Bảo mật, release và chuyển đổi core",
+        "path": "docs/10-operations-and-security/security-and-delivery.md"
+      },
+      {
+        "title": "SRE, SLO và capacity planning",
+        "path": "docs/10-operations-and-security/sre-capacity.md"
+      }
+    ]
+  },
+  {
+    "category": "11-leadership-and-governance",
+    "title": "Quản trị và giám đốc nghiệp vụ",
+    "pages": [
+      {
+        "title": "Architect: ADR, NFR, trade-off và đánh giá giải pháp",
+        "path": "docs/11-leadership-and-governance/architecture-governance.md"
+      },
+      {
+        "title": "Giám đốc nghiệp vụ: mô hình kinh doanh và quyền quyết định",
+        "path": "docs/11-leadership-and-governance/business-director.md"
+      }
+    ]
+  },
+  {
+    "category": "12-workshops",
+    "title": "Workshop và đánh giá",
+    "pages": [
+      {
+        "title": "Sáu workshop có đầu vào và đáp án",
+        "path": "docs/12-workshops/workshops.md"
+      },
+      {
+        "title": "Bộ 30 câu hỏi vấn đáp và đáp án",
+        "path": "docs/12-workshops/assessment.md"
+      },
+      {
+        "title": "Capstone: thiết kế nền tảng chứng khoán tham chiếu",
+        "path": "docs/12-workshops/capstone.md"
+      }
+    ]
+  },
+  {
+    "category": "13-reference",
+    "title": "Tra cứu và nguồn",
+    "pages": [
+      {
+        "title": "Từ điển Việt–Anh cho team",
+        "path": "docs/13-reference/glossary.md"
+      },
+      {
+        "title": "Sổ nguồn và giới hạn xác minh",
+        "path": "docs/13-reference/sources.md"
+      },
+      {
+        "title": "Theo dõi quy định và mốc hiệu lực",
+        "path": "docs/13-reference/regulatory-watch.md"
+      }
+    ]
+  }
+]

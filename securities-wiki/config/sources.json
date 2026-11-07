@@ -1,0 +1,152 @@
+{
+  "reviewed_at": "2026-11-07",
+  "sources": [
+    {
+      "id": "S01",
+      "title": "UBCKNN: vận hành chính thức KRX ngày 05/05/2025",
+      "url": "https://ssc.gov.vn/webcenter/portal/ubck/pages_r/l/chitit?dDocName=APPSSCGOVVN1620154578",
+      "published": "2025-05-05",
+      "evidence": "Đã đọc thông tin công bố; chứng minh mốc vận hành, không chứng minh mọi sản phẩm được triển khai."
+    },
+    {
+      "id": "S02",
+      "title": "VNX: danh mục quy chế, gồm 22/2026, 23/2026, 39/2026",
+      "url": "https://vnx.vn/vi/van-ban-phap-ly/6",
+      "published": "2026",
+      "evidence": "Đã đọc metadata, ngày ban hành/hiệu lực và liên kết tài liệu. Không dùng listing thay toàn văn."
+    },
+    {
+      "id": "S03",
+      "title": "HOSE: metadata quy chế 22 ngày 18/04/2025",
+      "url": "https://www.hsx.vn/vi/van-ban-phap-quy/quy-che-niem-yet-va-giao-dich-chung-khoan-niem-yet/2372147",
+      "published": "2025-04-18",
+      "evidence": "Nguồn lịch sử; trang động hạn chế đọc. Không dùng làm baseline hiện hành thay bản 2026."
+    },
+    {
+      "id": "S04",
+      "title": "TCBS: hướng dẫn giao dịch HOSE theo KRX",
+      "url": "https://help.tcbs.com.vn/quy-dinh-giao-dich-tai-hsx-krx/",
+      "published": "2025-05-06",
+      "evidence": "Hướng dẫn của đơn vị cung cấp dịch vụ; phần lô lẻ có khác SSI và phụ lục 2026, không dùng phần đó làm căn cứ hiện hành."
+    },
+    {
+      "id": "S05",
+      "title": "TCBS: hướng dẫn HNX/UPCoM theo KRX",
+      "url": "https://help.tcbs.com.vn/quy-dinh-giao-dich-chung-khoan-tai-hnx-krx/",
+      "published": "2025-05-05",
+      "evidence": "Đã đọc; tên PLO là cách gọi hướng dẫn. Ưu tiên S17 cho phiên sau giờ HNX hiện hành."
+    },
+    {
+      "id": "S06",
+      "title": "SSI: FAQ KRX thị trường cơ sở",
+      "url": "https://www.ssi.com.vn/khach-hang-ca-nhan/krx-thi-truong-co-so-faq",
+      "published": "Không hiện ngày ban hành trong phần đọc",
+      "evidence": "Đã đọc phần thay MP, lô lẻ, sửa lệnh và ưu tiên; dùng đối chiếu trải nghiệm khách, không suy luận kiến trúc SSI."
+    },
+    {
+      "id": "S07",
+      "title": "UBCKNN đăng hướng dẫn HOSE về ATO/ATC",
+      "url": "https://ssc.gov.vn/webcenter/portal/ubck/pages_r/l/chitit?dDocName=APPSSCGOVVN1620153649",
+      "published": "2025-04-11",
+      "evidence": "Tài liệu giới thiệu trước triển khai; dùng giải thích bối cảnh, đối chiếu điều 19 bản 2026 tại S16."
+    },
+    {
+      "id": "S08",
+      "title": "VSDC: công bố hướng dẫn hệ thống chuyển mạch điện nghiệp vụ",
+      "url": "https://vsdc.vn/vi/ad/192939",
+      "published": "2026-03-06",
+      "evidence": "Xác nhận tồn tại hướng dẫn số 70 ngày 05/03/2026; chưa đọc toàn bộ đặc tả thành viên."
+    },
+    {
+      "id": "S09",
+      "title": "VSDC: thay đổi thanh toán T+2 năm 2022",
+      "url": "https://vsdc.vn/vi/ad/152750",
+      "published": "2022-08-19",
+      "evidence": "Nguồn lịch sử giải thích T+2 và phân bổ trước phiên chiều; không thay rulebook/cutoff hiện hành của từng sản phẩm."
+    },
+    {
+      "id": "S10",
+      "title": "VSDC: quy chế bù trừ thanh toán số 48/2024",
+      "url": "https://vsdc.vn/vi/ad/176341",
+      "published": "2024-11-01",
+      "evidence": "Đã đọc thông báo về non-prefunding tổ chức nước ngoài; không suy rộng cho nhà đầu tư khác."
+    },
+    {
+      "id": "S11",
+      "title": "VSDC: dự thảo quy chế triển khai Thông tư 145/2026",
+      "url": "https://vsdc.vn/vi/ad/202086",
+      "published": "2026-11-02",
+      "evidence": "Đã đọc: Thông tư hiệu lực 16/11/2026; chín quy chế được thông báo lấy ý kiến là dự thảo tại bài đăng."
+    },
+    {
+      "id": "S12",
+      "title": "VNX: lịch chuyển cổ phiếu niêm yết HNX sang HOSE",
+      "url": "https://www.vnx.vn/vi/thong-tin-tu-sgdck/VNX_QLHD/10005424",
+      "published": "2026-09-30",
+      "evidence": "Đã đọc thông báo lịch 23/12, 24–25/12 và 28/12/2026; là kế hoạch tương lai tại ngày rà soát."
+    },
+    {
+      "id": "S13",
+      "title": "FIX Trading Community: Session Layer specification",
+      "url": "https://www.fixtrading.org/wp-content/uploads/download-manager-files/FIX_Session_Layer_June_2020.pdf",
+      "published": "2020-06",
+      "evidence": "Nguồn chuẩn khái niệm session/recovery; không phải dialect/đặc tả kết nối HOSE/HNX."
+    },
+    {
+      "id": "S14",
+      "title": "BIS/CPMI-IOSCO: Principles for Financial Market Infrastructures",
+      "url": "https://www.bis.org/cpmi/publ/d101a.pdf",
+      "published": "2012-04",
+      "evidence": "Nguồn nguyên tắc quốc tế về FMI/DvP/CCP; không thay quy định Việt Nam."
+    },
+    {
+      "id": "S15",
+      "title": "DNSE: thông báo chuyển đổi KRX thành công",
+      "url": "https://www.dnse.com.vn/tin-tuc/thong-bao-chuyen-doi-he-thong-krx-thanh-cong",
+      "published": "2025",
+      "evidence": "Nguồn về thông báo công khai của DNSE, không có căn cứ suy ra topology hoặc stack nội bộ."
+    },
+    {
+      "id": "S16",
+      "title": "VNX: toàn văn Quy chế 22/QĐ-HĐTV ngày 16/03/2026",
+      "url": "https://stream.vnx.vn/VNX//Legal/2026031816145088VNX.Quy-che-niem-yet_QD22.pdf",
+      "published": "2026-03-16",
+      "evidence": "Đã tải bản scan 48 trang, OCR để tìm và kiểm tra trực quan điều 19, 22, 23 liên quan khớp/sửa/hủy. Chưa review toàn bộ điều khoản niêm yết."
+    },
+    {
+      "id": "S17",
+      "title": "VNX: phụ lục Quy chế 22/QĐ-HĐTV ngày 16/03/2026",
+      "url": "https://stream.vnx.vn/VNX//Legal/20260318161451415VNX.-PL-Quy-che-niem-yet_QD22.pdf",
+      "published": "2026-03-16",
+      "evidence": "Đã tải bản scan 56 trang; kiểm tra phần Phụ lục III về thời gian, giao dịch và đơn vị; xem evidence map."
+    },
+    {
+      "id": "S18",
+      "title": "UBCKNN: giới thiệu Thông tư 145/2026/TT-BTC",
+      "url": "https://ssc.gov.vn/webcenter/portal/ubck/pages_r/l/chitit?dDocName=APPSSCGOVVN1620172386&dID=182825",
+      "published": "2026-10-02",
+      "evidence": "Đã đọc tóm tắt: hiệu lực 16/11/2026; có phần trước/khi triển khai CCP. Không kết luận CCP cơ sở đã vận hành."
+    },
+    {
+      "id": "S19",
+      "title": "VSDC: dịch vụ bù trừ và thanh toán",
+      "url": "https://vsdc.vn/vi/sd/XAz40d2Q-9j569TvBgLQaQ",
+      "published": "Trang dịch vụ, truy cập 2026-11-07",
+      "evidence": "Đã đọc chu kỳ theo sản phẩm và dẫn chiếu quy chế 39/QĐ-HĐTV ngày 29/04/2025; không thay toàn văn quy chế."
+    },
+    {
+      "id": "S20",
+      "title": "Microsoft: DbContext lifetime và threading",
+      "url": "https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/",
+      "published": "Tài liệu trực tuyến",
+      "evidence": "Đối chiếu không dùng đồng thời cùng DbContext; các kiến nghị transaction trong wiki là DESIGN."
+    },
+    {
+      "id": "S21",
+      "title": "Microsoft: SQL Server table hints",
+      "url": "https://learn.microsoft.com/en-us/sql/t-sql/queries/hints-transact-sql-table?view=sql-server-ver17",
+      "published": "Tài liệu trực tuyến",
+      "evidence": "Đối chiếu NOLOCK/READUNCOMMITTED và dirty reads; không dùng làm bảo đảm consistency tài sản."
+    }
+  ]
+}
