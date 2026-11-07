@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101f34">
+    <meta name="description" content="Wiki đào tạo nghiệp vụ và kiến trúc hệ thống chứng khoán Việt Nam.">
+    <title>Wiki Chứng khoán Việt Nam</title>
+    <link rel="stylesheet" href="./assets/styles.css">
+    <script src="./assets/app.js" type="module"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" id="sidebar" aria-label="Danh mục bài học">
+        <a class="brand" href="#/" aria-label="Về trang chủ">
+          <span class="brand-mark">S<span>·</span></span>
+          <span class="brand-name">SECURITIES<span>WIKI</span><small>VIETNAM MARKET SYSTEMS</small></span>
+        </a>
+        <div class="side-label">THƯ VIỆN KIẾN THỨC</div>
+        <nav id="nav"></nav>
+        <div class="side-footer"><span class="status-dot"></span> Training edition 1.0 <span>· 2026</span></div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <button class="icon-button menu-button" id="menu-button" aria-label="Mở danh mục">☰</button>
+          <a class="topbrand" href="#/">Securities Wiki <span>/ Việt Nam</span></a>
+          <div class="top-actions">
+            <button class="search-trigger" id="search-trigger" aria-label="Tìm kiếm bài học">
+              <span class="search-icon">⌕</span><span>Tìm kiếm nội dung</span><kbd>/</kbd>
+            </button>
+            <button class="icon-button" id="theme-button" aria-label="Đổi giao diện">◐</button>
+          </div>
+        </header>
+
+        <div class="reading-progress" id="reading-progress"></div>
+        <main id="main" tabindex="-1"></main>
+      </div>
+    </div>
+
+    <div class="overlay" id="search-overlay" hidden>
+      <section class="search-dialog" role="dialog" aria-modal="true" aria-labelledby="search-title">
+        <div class="search-head"><span class="search-icon">⌕</span><h2 id="search-title" class="sr-only">Tìm kiếm bài học</h2><input id="search-input" type="search" placeholder="Tìm theo chủ đề, nghiệp vụ, hệ thống..." autocomplete="off" aria-label="Tìm kiếm"><button id="search-close" aria-label="Đóng tìm kiếm">ESC</button></div>
+        <div class="search-results" id="search-results"></div>
+        <div class="search-hint">Nhấn Enter để mở bài · Esc để đóng</div>
+      </section>
+    </div>
+    <div class="mobile-backdrop" id="mobile-backdrop" hidden></div>
+  </body>
+</html>
