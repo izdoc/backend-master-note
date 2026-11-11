@@ -37,3 +37,11 @@ Mốc rà soát nguồn: 07/11/2026. Tài liệu phân biệt quy định đã x
 Wiki tiếng Việt theo 11 category về thiết kế dữ liệu, ledger/số dư, ngân hàng/chứng khoán/bảo hiểm, transaction/concurrency, idempotency, SQL/index/plan/statistics, partition/archive, bảo mật, backup/restore, vận hành và tích hợp .NET. Có lộ trình 8 tuần, 6 workshop, capstone, mẫu review/tuning và 5 script lab SQL Server.
 
 Trọng tâm SQL Server 2022, có bài đối chiếu PostgreSQL 18. Mốc rà soát: 11/11/2026. Script đã được review tĩnh, chưa thực thi trên SQL Server trong lần xuất bản này; xem hướng dẫn lab và nguồn trước khi áp dụng.
+
+## Nền tảng mạng máy tính — CCNA và Windows Server networking
+
+[Đọc Network Fundamentals Wiki](network-fundamentals-wiki/README.md) · [Mục lục 25 bài](network-fundamentals-wiki/INDEX.md) · [Nguồn học đáng tin cậy](network-fundamentals-wiki/REFERENCES.md)
+
+Giáo trình tiếng Việt gồm IP/subnetting/IPv6, Ethernet/VLAN/STP/LACP, routing/OSPF/NAT, DNS/DHCP/IPAM/NPS, Windows Server, Wi-Fi, bảo mật, automation và troubleshooting. Có lộ trình 8 tuần, 6 lab/workshop, 30 câu hỏi có giải thích và 60 thuật ngữ.
+
+Đối chiếu CCNA 200-301 v1.1 và phần networking của MCSA Windows Server 2016; MCSA là hệ chứng chỉ đã nghỉ. Nguồn RFC Editor, Cisco, Microsoft và tài liệu công cụ được dẫn trong từng bài. Mốc rà soát: 11/11/2026. Lab đã rà tĩnh, chưa thực thi trên simulator/Windows Server trong lần xuất bản này; xem [phạm vi kiểm chứng](network-fundamentals-wiki/VALIDATION.md).
