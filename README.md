@@ -45,3 +45,11 @@ Trọng tâm SQL Server 2022, có bài đối chiếu PostgreSQL 18. Mốc rà s
 Giáo trình tiếng Việt gồm IP/subnetting/IPv6, Ethernet/VLAN/STP/LACP, routing/OSPF/NAT, DNS/DHCP/IPAM/NPS, Windows Server, Wi-Fi, bảo mật, automation và troubleshooting. Có lộ trình 8 tuần, 6 lab/workshop, 30 câu hỏi có giải thích và 60 thuật ngữ.
 
 Đối chiếu CCNA 200-301 v1.1 và phần networking của MCSA Windows Server 2016; MCSA là hệ chứng chỉ đã nghỉ. Nguồn RFC Editor, Cisco, Microsoft và tài liệu công cụ được dẫn trong từng bài. Mốc rà soát: 11/11/2026. Lab đã rà tĩnh, chưa thực thi trên simulator/Windows Server trong lần xuất bản này; xem [phạm vi kiểm chứng](network-fundamentals-wiki/VALIDATION.md).
+
+## Prompt Engineering và Vibe Coding cho kỹ sư phần mềm
+
+[Đọc Prompt Engineering Wiki](prompt-engineering-wiki/README.md) · [Mục lục](prompt-engineering-wiki/INDEX.md) · [Nguồn chính thức](prompt-engineering-wiki/REFERENCES.md)
+
+Wiki tiếng Việt cho FE, BE, Database và Infrastructure, có phần mở rộng Data Engineering. Gồm 30 tình huống coding, troubleshooting và phân tích log; mỗi tình huống có prompt sao chép, lý do thiết kế, ví dụ kết quả, tiêu chí nghiệm thu và lỗi thường gặp. Ví dụ theo React/Next.js, C#/.NET, SQL Server, Docker/Kubernetes, Terraform và pipeline/event.
+
+Có nền tảng prompt/context/evidence, workflow vibe coding và incident, review kiến trúc/ADR, 4 mẫu tái sử dụng, rubric đánh giá, 6 workshop và capstone. Mốc đối chiếu 32 nguồn: 11/11/2026. Prompt/code/log là minh họa, chưa chạy A/B với model hoặc thực thi ứng dụng/hạ tầng; xem [phạm vi kiểm chứng](prompt-engineering-wiki/VALIDATION.md).
