@@ -30,3 +30,10 @@ Bộ training tiếng Việt theo 14 chuyên mục: nền tảng chứng khoán,
 
 Mốc rà soát nguồn: 07/11/2026. Tài liệu phân biệt quy định đã xác minh, thay đổi sắp có hiệu lực và kiến trúc minh họa; xem sổ nguồn và regulatory watch trước khi áp dụng.
 
+## Thiết kế và tối ưu cơ sở dữ liệu
+
+[Đọc Database Engineering Wiki](database-wiki/README.md) · [Mục lục 26 bài](database-wiki/INDEX.md)
+
+Wiki tiếng Việt theo 11 category về thiết kế dữ liệu, ledger/số dư, ngân hàng/chứng khoán/bảo hiểm, transaction/concurrency, idempotency, SQL/index/plan/statistics, partition/archive, bảo mật, backup/restore, vận hành và tích hợp .NET. Có lộ trình 8 tuần, 6 workshop, capstone, mẫu review/tuning và 5 script lab SQL Server.
+
+Trọng tâm SQL Server 2022, có bài đối chiếu PostgreSQL 18. Mốc rà soát: 11/11/2026. Script đã được review tĩnh, chưa thực thi trên SQL Server trong lần xuất bản này; xem hướng dẫn lab và nguồn trước khi áp dụng.
